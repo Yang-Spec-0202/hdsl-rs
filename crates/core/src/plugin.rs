@@ -442,7 +442,21 @@ fn verify_bundle_entries(bytes: &[u8], manifest: &PackageManifest) -> Result<()>
     let mut archive = tar::Archive::new(decoder);
     for item in archive.entries()? {
         let item = item?;
-        let item_path = item.path()?.to_string_lossy().replace('\\', "/");
+        let item_path = item.path()?;
+        let components: Vec<_> = item_path.components().collect();
+        let text = item_path.to_str().context("插件包路径不是 UTF-8")?;
+        if text.contains(['\\', ':'])
+            || components.first().map(|part| part.as_os_str())
+                != Some(std::ffi::OsStr::new("package"))
+            || components
+                .iter()
+                .any(|part| !matches!(part, std::path::Component::Normal(_)))
+            || (components.len() == 1 && !item.header().entry_type().is_dir())
+            || !(item.header().entry_type().is_file() || item.header().entry_type().is_dir())
+        {
+            bail!("插件包包含不安全的路径或链接");
+        }
+        let item_path = text;
         if item_path == patch_file {
             if !item.header().entry_type().is_file() {
                 bail!("插件 patch 不是普通文件");
@@ -855,5 +869,27 @@ mod tests {
         let mut bad = manifest.clone();
         bad.dsh = serde_json::json!({"bundle":{"patch":"../missing.yml"}});
         assert!(verify_bundle_entries(&bytes, &bad).is_err());
+
+        let gzip = GzEncoder::new(Vec::new(), Compression::default());
+        let mut archive = tar::Builder::new(gzip);
+        for (name, data) in [
+            ("package/package.json", bundle.as_bytes()),
+            ("package/cordis.patch.yml", b"- id: plugin\n".as_slice()),
+        ] {
+            let mut header = tar::Header::new_gnu();
+            header.set_size(data.len() as u64);
+            header.set_mode(0o644);
+            header.set_cksum();
+            archive.append_data(&mut header, name, data).unwrap();
+        }
+        let mut header = tar::Header::new_gnu();
+        let malicious = b"package/../../escape";
+        header.as_mut_bytes()[..malicious.len()].copy_from_slice(malicious);
+        header.set_size(1);
+        header.set_mode(0o644);
+        header.set_cksum();
+        archive.append(&header, b"x".as_slice()).unwrap();
+        let bytes = archive.into_inner().unwrap().finish().unwrap();
+        assert!(verify_bundle_entries(&bytes, &manifest).is_err());
     }
 }
