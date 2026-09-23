@@ -131,6 +131,13 @@ fn refresh_instances(state: &Arc<Controller>, weak: slint::Weak<AppWindow>) {
         .and_then(|i| i.home(&state.paths).ok())
         .and_then(|h| credentials::is_configured(&h, "DEEPSEEK_API_KEY").ok())
         .unwrap_or(false);
+    let installed: Vec<slint::SharedString> = active
+        .as_ref()
+        .and_then(|i| plugin::installed_plugins(&state.paths, i).ok())
+        .unwrap_or_default()
+        .into_iter()
+        .map(Into::into)
+        .collect();
     let rows: Vec<InstanceRow> = items
         .into_iter()
         .map(|i| InstanceRow {
@@ -143,6 +150,7 @@ fn refresh_instances(state: &Arc<Controller>, weak: slint::Weak<AppWindow>) {
         .collect();
     post(weak, move |ui| {
         ui.set_instances(ModelRc::new(VecModel::from(rows)));
+        ui.set_installed_plugins(ModelRc::new(VecModel::from(installed)));
         ui.set_api_key_configured(configured);
         if let Some(i) = active {
             ui.set_selected_id(i.id.to_string().into());
@@ -342,7 +350,28 @@ fn wire_callbacks(ui: &AppWindow, state: &Arc<Controller>) {
                 &item,
                 &version,
                 |review| request_build_approval(&state, update.clone(), review),
-            )
+            )?;
+            refresh_instances(&state, update);
+            Ok(())
+        });
+    });
+    let weak = ui.as_weak();
+    let controller = state.clone();
+    ui.on_remove_plugin(move |package| {
+        let state = controller.clone();
+        let update = weak.clone();
+        let package = package.to_string();
+        job(weak.clone(), "卸载插件", move || {
+            let _operation = state
+                .plugin_operation
+                .lock()
+                .expect("plugin operation lock");
+            let instance = selected_instance(&state)?;
+            stop_one(&state, instance.id)?;
+            let node = runtime::ensure_node24(&state.paths, &state.registry)?;
+            plugin::remove_plugin(&state.paths, &instance, &node, &package)?;
+            refresh_instances(&state, update);
+            Ok(())
         });
     });
     let controller = state.clone();

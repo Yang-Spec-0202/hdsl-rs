@@ -268,6 +268,58 @@ pub fn installed_plugins(paths: &AppPaths, instance: &Instance) -> Result<Vec<St
     Ok(names)
 }
 
+pub fn remove_plugin(
+    paths: &AppPaths,
+    instance: &Instance,
+    runtime: &NodeRuntime,
+    package: &str,
+) -> Result<()> {
+    if !installed_plugins(paths, instance)?
+        .iter()
+        .any(|name| name == package)
+    {
+        bail!("当前 profile 未安装该插件");
+    }
+    let profile = instance.home(paths)?.join("profiles/web");
+    let transaction = ProfileTransaction::begin(&profile)?;
+    let outcome = (|| -> Result<()> {
+        let entry = dsh_entry(&instance.dsh(paths)?)?;
+        let output = Command::new(runtime.node())
+            .arg(&entry)
+            .args(["plugin", "--profile", "web", "remove", package])
+            .current_dir(&instance.workspace)
+            .env("DSH_HOME", instance.home(paths)?)
+            .env("PATH", managed_path(paths, runtime)?)
+            .output()?;
+        if !output.status.success() {
+            bail!(
+                "官方 dsh plugin 卸载失败（退出码 {:?}）",
+                output.status.code()
+            );
+        }
+        let check = Command::new(runtime.node())
+            .arg(entry)
+            .args(["--profile", "web", "--dump-config"])
+            .current_dir(&instance.workspace)
+            .env("DSH_HOME", instance.home(paths)?)
+            .env("PATH", managed_path(paths, runtime)?)
+            .output()?;
+        if !check.status.success() {
+            bail!("卸载后 Harness 配置检查失败");
+        }
+        Ok(())
+    })();
+    match outcome {
+        Ok(()) => transaction.commit(),
+        Err(problem) => {
+            transaction
+                .rollback()
+                .with_context(|| format!("插件卸载失败（{problem:#}），且原 profile 恢复失败"))?;
+            Err(problem)
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct BuildScriptReview {
     pub package: String,

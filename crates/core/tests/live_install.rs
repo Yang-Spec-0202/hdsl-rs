@@ -1,6 +1,7 @@
 use hdsl_core::harness::{install_dsh, run_dsh};
 use hdsl_core::plugin::{
     curated_catalog, install_plugin, installed_core_versions, installed_plugins, latest_compatible,
+    remove_plugin,
 };
 use hdsl_core::registry::Registry;
 use hdsl_core::runtime::{ensure_node24, ensure_pnpm};
@@ -89,6 +90,12 @@ fn installs_exact_harness_in_isolated_home() {
     .unwrap();
     assert!(
         installed_plugins(&paths, &instance)
+            .unwrap()
+            .contains(&selected.name)
+    );
+    remove_plugin(&paths, &instance, &node, &selected.name).unwrap();
+    assert!(
+        !installed_plugins(&paths, &instance)
             .unwrap()
             .contains(&selected.name)
     );

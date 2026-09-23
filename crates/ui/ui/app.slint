@@ -67,6 +67,7 @@ export component AppWindow inherits Window {
 
     in-out property <[InstanceRow]> instances;
     in-out property <[PluginRow]> plugins;
+    in-out property <[string]> installed-plugins;
     in-out property <string> status-text: "准备就绪";
     in-out property <string> log-text: "";
     in-out property <string> latest-version: "";
@@ -81,6 +82,7 @@ export component AppWindow inherits Window {
     in-out property <string> form-version: "";
     in-out property <string> form-workspace: "";
     property <string> pending-delete-id: "";
+    property <string> pending-remove-plugin: "";
     in-out property <bool> approval-pending: false;
     in-out property <string> approval-title: "";
     in-out property <string> approval-body: "";
@@ -94,6 +96,7 @@ export component AppWindow inherits Window {
     callback remove-instance(string);
     callback refresh-plugins(string);
     callback install-plugin(string, string, string);
+    callback remove-plugin(string);
     callback save-api(string, string, string);
     callback open-web-settings();
     callback open-help();
@@ -110,12 +113,8 @@ export component AppWindow inherits Window {
                 Rectangle {
                     height: 92px;
                     background: transparent;
-                    Rectangle {
-                        x: 4px; y: 8px; width: 45px; height: 45px;
-                        border-radius: 23px; background: #3574d5;
-                        Text { text: "H"; color: white; font-size: 28px; font-weight: 700;
-                            horizontal-alignment: center; vertical-alignment: center; }
-                    }
+                    Image { x: 4px; y: 8px; width: 45px; height: 45px;
+                        source: @image-url("assets/hdsl-mark.svg"); image-fit: contain; }
                     Text { x: 61px; y: 8px; text: "HDSL"; color: #1e3d70; font-size: 23px; font-weight: 700; }
                     Text { x: 61px; y: 40px; text: "DeepSeek 启动器"; color: #718198; font-size: 11px; }
                 }
@@ -218,6 +217,19 @@ export component AppWindow inherits Window {
                     spacing: 12px;
                     PageTitle { label: "插件市场"; }
                     Text { text: "仅显示当前实例有明确兼容证据的插件版本。"; color: #718198; font-size: 13px; }
+                    Rectangle { height: 155px; background: white; border-radius: 9px;
+                        VerticalLayout { padding: 12px; spacing: 5px;
+                            Text { text: "当前实例已安装"; font-size: 16px; font-weight: 700; color: #253851; }
+                            ScrollView { vertical-stretch: 1;
+                                VerticalLayout { spacing: 5px;
+                                    for package in root.installed-plugins: HorizontalLayout { height: 35px; spacing: 8px;
+                                        Text { text: package; font-size: 13px; color: #50647f; horizontal-stretch: 1; }
+                                        ActionButton { width: 75px; label: "卸载"; clicked => { root.pending-remove-plugin = package; } }
+                                    }
+                                }
+                            }
+                        }
+                    }
                     HorizontalLayout { spacing: 10px;
                         plugin-search := LineEdit { placeholder-text: "搜索 GitHub 插件仓库"; horizontal-stretch: 1; }
                         ActionButton { width: 90px; label: "搜索"; clicked => { root.refresh-plugins(plugin-search.text); } }
@@ -290,6 +302,22 @@ export component AppWindow inherits Window {
                     ActionButton { width: 95px; label: "取消"; clicked => { root.pending-delete-id = ""; } }
                     ActionButton { width: 95px; label: "确认删除"; primary: true;
                         clicked => { root.remove-instance(root.pending-delete-id); root.pending-delete-id = ""; } }
+                }
+            }
+        }
+    }
+    if root.pending-remove-plugin != "": Rectangle {
+        background: #990e1c34;
+        Rectangle { width: 410px; height: 165px; x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2;
+            background: white; border-radius: 10px;
+            VerticalLayout { padding: 20px; spacing: 12px;
+                Text { text: "卸载插件？"; font-size: 18px; font-weight: 700; color: #263a57; }
+                Text { text: root.pending-remove-plugin; font-size: 13px; color: #6a778b; overflow: elide; }
+                HorizontalLayout { spacing: 10px;
+                    Rectangle { horizontal-stretch: 1; background: transparent; }
+                    ActionButton { width: 95px; label: "取消"; clicked => { root.pending-remove-plugin = ""; } }
+                    ActionButton { width: 95px; label: "确认卸载"; primary: true;
+                        clicked => { root.remove-plugin(root.pending-remove-plugin); root.pending-remove-plugin = ""; } }
                 }
             }
         }

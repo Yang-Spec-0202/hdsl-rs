@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="HDSL 海流字母 H 图标">
+  <rect x="8" y="8" width="240" height="240" rx="62" fill="#193E69"/>
+  <path d="M70 66c-8 28-8 96 0 124" fill="none" stroke="#65DCCB" stroke-width="25" stroke-linecap="round"/>
+  <path d="M185 66c8 28 8 96 0 124" fill="none" stroke="#65DCCB" stroke-width="25" stroke-linecap="round"/>
+  <path d="M78 128c22-22 37-22 51 0s29 22 50 0" fill="none" stroke="#E5FFF5" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="128" cy="58" r="8" fill="#BDF9E9"/>
+  <circle cx="161" cy="77" r="5" fill="#BDF9E9"/>
+</svg>
