@@ -11,5 +11,4 @@ hdsl-ui = { path = "../ui" }
 slint.workspace = true
 serde_json.workspace = true
 webbrowser.workspace = true
-regex.workspace = true
 uuid.workspace = true

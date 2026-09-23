@@ -184,10 +184,12 @@ fn download(registry: &Registry, url: &str, dest: &Path) -> Result<()> {
 fn checksum_for(contents: &str, archive: &str) -> Result<String> {
     for line in contents.lines() {
         let mut fields = line.split_whitespace();
-        if let (Some(sum), Some(file)) = (fields.next(), fields.next()) {
-            if file == archive && sum.len() == 64 && sum.bytes().all(|c| c.is_ascii_hexdigit()) {
-                return Ok(sum.into());
-            }
+        if let (Some(sum), Some(file)) = (fields.next(), fields.next())
+            && file == archive
+            && sum.len() == 64
+            && sum.bytes().all(|c| c.is_ascii_hexdigit())
+        {
+            return Ok(sum.into());
         }
     }
     bail!("官方校验列表中找不到发行包")

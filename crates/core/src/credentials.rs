@@ -32,6 +32,27 @@ pub fn is_configured(home: &Path, key: &str) -> Result<bool> {
         .is_some_and(|v| !v.is_empty()))
 }
 
+pub fn redact_log_line(home: &Path, line: &str) -> String {
+    let mut safe = line.to_owned();
+    if let Ok(root) = read_document(home)
+        && let Some(refs) = root
+            .get(Value::String("refs".into()))
+            .and_then(Value::as_mapping)
+    {
+        for secret in refs
+            .values()
+            .filter_map(Value::as_str)
+            .filter(|s| !s.is_empty())
+        {
+            safe = safe.replace(secret, "[已隐藏密钥]");
+        }
+    }
+    let token = regex::Regex::new(r"(?i)([?&]token=)[^\s&]+").expect("token regex");
+    safe = token.replace_all(&safe, "${1}[已隐藏]").to_string();
+    let api = regex::Regex::new(r"\bsk-[A-Za-z0-9_-]{8,}\b").expect("api key regex");
+    api.replace_all(&safe, "[已隐藏密钥]").to_string()
+}
+
 pub fn set_key(home: &Path, key: &str, secret: Option<&str>) -> Result<()> {
     if !valid_ref(key) {
         bail!("无效的 API 凭据名称");
@@ -123,5 +144,16 @@ mod tests {
         assert!(is_configured(home.path(), "DEEPSEEK_API_KEY").unwrap());
         set_key(home.path(), "DEEPSEEK_API_KEY", None).unwrap();
         assert!(!is_configured(home.path(), "DEEPSEEK_API_KEY").unwrap());
+    }
+    #[test]
+    fn redacts_configured_key_and_url_token() {
+        let home = tempfile::tempdir().unwrap();
+        set_key(home.path(), "DEEPSEEK_API_KEY", Some("secret-12345")).unwrap();
+        let text = redact_log_line(
+            home.path(),
+            "key=secret-12345 http://127.0.0.1/?token=abc123",
+        );
+        assert!(!text.contains("secret-12345"));
+        assert!(!text.contains("abc123"));
     }
 }

@@ -6,7 +6,7 @@
 
 启动器只管理 Harness，不修改 Harness 源码。安装版本以 npm `@deepseek-ai/dsh@<精确版本>` 为准。启动时使用该安装的 `bin` 入口、实例工作目录及实例专属 `DSH_HOME`。插件操作使用同一版本的 `dsh plugin --profile web`，不得使用系统全局的 `dsh`。
 
-网络来源限定为 Node.js 官方发行索引、npm registry、插件目录和 GitHub 元数据。安装前验证 Node 官方 SHA256 与 npm 包的 integrity；所有写入先进入临时目录，成功验证后才发布为可见版本。
+网络来源限定为 Node.js 官方发行索引、npm registry、插件目录和 GitHub 元数据。安装前验证 Node 官方 SHA256 与 npm 包的 integrity。Node 下载使用临时目录；Harness 直接安装在最终实例目录，因为 Windows 上 pnpm 链接不能随目录移动。成功验证后才写入 `instance.json`，因此失败安装不会出现在实例列表。
 
 界面按 HMCL 的导航层级重做，资源文件独立创作。不得复制参考项目的图标、壁纸或角色图。
 

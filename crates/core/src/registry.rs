@@ -30,6 +30,8 @@ pub struct PackageManifest {
     #[serde(default)]
     pub engines: BTreeMap<String, String>,
     #[serde(default)]
+    pub scripts: BTreeMap<String, String>,
+    #[serde(default)]
     pub dsh: Value,
     #[serde(default)]
     pub repository: Value,
@@ -54,18 +56,29 @@ impl Registry {
         &self.client
     }
     pub fn versions(&self, name: &str) -> Result<Vec<String>> {
-        Ok(self
-            .manifests(name)?
-            .into_iter()
-            .map(|m| m.version)
-            .collect())
+        let path = encode_package(name);
+        let index: PackageIndex = self
+            .client
+            .get(format!("https://registry.npmjs.org/{path}"))
+            .header("Accept", "application/vnd.npm.install-v1+json")
+            .send()?
+            .error_for_status()?
+            .json()
+            .context("npm 版本目录解析失败")?;
+        let mut versions: Vec<Version> = index
+            .versions
+            .keys()
+            .filter_map(|v| v.parse().ok())
+            .collect();
+        versions.sort_by(|a, b| b.cmp(a));
+        Ok(versions.into_iter().map(|v| v.to_string()).collect())
     }
     pub fn manifests(&self, name: &str) -> Result<Vec<PackageManifest>> {
         let path = encode_package(name);
         let index: PackageIndex = self
             .client
             .get(format!("https://registry.npmjs.org/{path}"))
-            .header("Accept", "application/vnd.npm.install-v1+json")
+            .header("Accept", "application/json")
             .send()?
             .error_for_status()?
             .json()
@@ -112,5 +125,18 @@ mod tests {
     #[test]
     fn encodes_scoped_package() {
         assert_eq!(encode_package("@deepseek-ai/dsh"), "%40deepseek-ai%2Fdsh");
+    }
+    #[test]
+    #[ignore = "queries live npm metadata"]
+    fn full_metadata_retains_bundle_and_repository() {
+        let registry = Registry::new().unwrap();
+        let manifest = registry
+            .manifests("dsh-better-sidebar")
+            .unwrap()
+            .into_iter()
+            .find(|m| m.version == "0.19.1")
+            .unwrap();
+        assert!(manifest.dsh.pointer("/bundle/patch").is_some());
+        assert!(manifest.repository.to_string().contains("github.com"));
     }
 }

@@ -1,18 +1,19 @@
 use anyhow::{Context, Result, bail};
 use hdsl_core::credentials;
 use hdsl_core::harness;
-use hdsl_core::plugin::{self, CatalogItem};
+use hdsl_core::plugin::{self, BuildScriptReview, CatalogItem};
 use hdsl_core::registry::Registry;
 use hdsl_core::runtime;
 use hdsl_core::{AppPaths, Instance, InstanceStore};
 use hdsl_ui::{AppWindow, InstanceRow, PluginRow};
-use regex::Regex;
 use slint::{ComponentHandle, ModelRc, VecModel};
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::process::Child;
+use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 use uuid::Uuid;
 
 struct Controller {
@@ -22,6 +23,8 @@ struct Controller {
     selected: Mutex<Option<Uuid>>,
     processes: Mutex<HashMap<Uuid, Child>>,
     web_urls: Mutex<HashMap<Uuid, String>>,
+    pending_approval: Mutex<Option<mpsc::Sender<bool>>>,
+    plugin_operation: Mutex<()>,
 }
 
 fn main() -> Result<()> {
@@ -34,6 +37,8 @@ fn main() -> Result<()> {
         selected: Mutex::new(None),
         processes: Mutex::new(HashMap::new()),
         web_urls: Mutex::new(HashMap::new()),
+        pending_approval: Mutex::new(None),
+        plugin_operation: Mutex::new(()),
     });
     let ui = AppWindow::new()?;
     let cwd = std::env::current_dir()?.to_string_lossy().to_string();
@@ -74,6 +79,37 @@ where
 fn selected_instance(state: &Controller) -> Result<Instance> {
     let id = (*state.selected.lock().expect("selected lock")).context("请先选择实例")?;
     state.store.load(id)
+}
+
+fn request_build_approval(
+    state: &Controller,
+    weak: slint::Weak<AppWindow>,
+    review: &BuildScriptReview,
+) -> Result<bool> {
+    let (sender, receiver) = mpsc::channel();
+    {
+        let mut pending = state.pending_approval.lock().expect("approval lock");
+        if pending.is_some() {
+            bail!("另一个构建脚本正在等待确认");
+        }
+        *pending = Some(sender);
+    }
+    let title = format!("批准 {}@{} 的脚本？", review.package, review.version);
+    let body = review
+        .scripts
+        .iter()
+        .map(|(name, command)| format!("{name}: {command}"))
+        .collect::<Vec<_>>()
+        .join("\n\n");
+    post(weak.clone(), move |ui| {
+        ui.set_approval_title(title.into());
+        ui.set_approval_body(body.into());
+        ui.set_approval_pending(true);
+    });
+    let decision = receiver.recv_timeout(Duration::from_secs(300));
+    state.pending_approval.lock().expect("approval lock").take();
+    post(weak, |ui| ui.set_approval_pending(false));
+    Ok(decision.unwrap_or(false))
 }
 
 fn refresh_instances(state: &Arc<Controller>, weak: slint::Weak<AppWindow>) {
@@ -175,7 +211,14 @@ fn wire_callbacks(ui: &AppWindow, state: &Arc<Controller>) {
             )?;
             let node = runtime::ensure_node24(&state.paths, &state.registry)?;
             let pnpm = runtime::ensure_pnpm(&state.paths, &node)?;
-            harness::install_dsh(&state.paths, &instance, &node, &pnpm)?;
+            harness::install_dsh(
+                &state.paths,
+                &instance,
+                &node,
+                &pnpm,
+                &state.registry,
+                |review| request_build_approval(&state, update.clone(), review),
+            )?;
             state.store.save(&instance)?;
             *state.selected.lock().expect("selected lock") = Some(instance.id);
             refresh_instances(&state, update.clone());
@@ -271,6 +314,7 @@ fn wire_callbacks(ui: &AppWindow, state: &Arc<Controller>) {
     let controller = state.clone();
     ui.on_install_plugin(move |package, version, repo| {
         let state = controller.clone();
+        let update = weak.clone();
         let version = version.to_string();
         let item = CatalogItem {
             full_name: repo.to_string(),
@@ -282,6 +326,10 @@ fn wire_callbacks(ui: &AppWindow, state: &Arc<Controller>) {
             installable: true,
         };
         job(weak.clone(), "安装插件", move || {
+            let _operation = state
+                .plugin_operation
+                .lock()
+                .expect("plugin operation lock");
             let instance = selected_instance(&state)?;
             stop_one(&state, instance.id)?;
             let node = runtime::ensure_node24(&state.paths, &state.registry)?;
@@ -293,8 +341,20 @@ fn wire_callbacks(ui: &AppWindow, state: &Arc<Controller>) {
                 &state.registry,
                 &item,
                 &version,
+                |review| request_build_approval(&state, update.clone(), review),
             )
         });
+    });
+    let controller = state.clone();
+    ui.on_approve_build(move |approved| {
+        if let Some(sender) = controller
+            .pending_approval
+            .lock()
+            .expect("approval lock")
+            .take()
+        {
+            let _ = sender.send(approved);
+        }
     });
 
     let weak = ui.as_weak();
@@ -370,35 +430,26 @@ fn launch_selected(state: &Arc<Controller>, weak: slint::Weak<AppWindow>) -> Res
         .lock()
         .expect("processes lock")
         .insert(instance.id, child);
-    pipe_logs(state.clone(), instance.id, weak.clone(), stdout, "");
-    pipe_logs(state.clone(), instance.id, weak, stderr, "[stderr] ");
+    state
+        .web_urls
+        .lock()
+        .expect("urls lock")
+        .insert(instance.id, format!("http://127.0.0.1:{}", instance.port));
+    let home = instance.home(&state.paths)?;
+    pipe_logs(home.clone(), weak.clone(), stdout, "");
+    pipe_logs(home, weak, stderr, "[stderr] ");
     Ok(())
 }
 
 fn pipe_logs<R: std::io::Read + Send + 'static>(
-    state: Arc<Controller>,
-    id: Uuid,
+    home: PathBuf,
     weak: slint::Weak<AppWindow>,
     source: R,
     prefix: &'static str,
 ) {
     std::thread::spawn(move || {
-        let ready = Regex::new(r"^dsh web:\s+(http://127\.0\.0\.1:\d+/\?token=[A-Za-z0-9_-]+)")
-            .expect("ready regex");
         for line in BufReader::new(source).lines().map_while(|r| r.ok()) {
-            if let Some(url) = ready
-                .captures(&line)
-                .and_then(|c| c.get(1))
-                .map(|m| m.as_str().to_owned())
-            {
-                state
-                    .web_urls
-                    .lock()
-                    .expect("urls lock")
-                    .insert(id, url.clone());
-                let _ = webbrowser::open(&url);
-            }
-            let safe = ready.replace(&line, "dsh web: http://127.0.0.1/<token hidden>");
+            let safe = credentials::redact_log_line(&home, &line);
             let message = format!("{prefix}{safe}\n");
             post(weak.clone(), move |ui| {
                 let mut logs = ui.get_log_text().to_string();
@@ -420,11 +471,11 @@ fn pipe_logs<R: std::io::Read + Send + 'static>(
 }
 
 fn stop_one(state: &Controller, id: Uuid) -> Result<()> {
-    if let Some(mut child) = state.processes.lock().expect("processes lock").remove(&id) {
-        if child.try_wait()?.is_none() {
-            child.kill()?;
-            child.wait()?;
-        }
+    if let Some(mut child) = state.processes.lock().expect("processes lock").remove(&id)
+        && child.try_wait()?.is_none()
+    {
+        child.kill()?;
+        child.wait()?;
     }
     state.web_urls.lock().expect("urls lock").remove(&id);
     Ok(())
