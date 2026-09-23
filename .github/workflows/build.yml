@@ -1,0 +1,133 @@
+name: Build and package HDSL
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Rust checks
+        shell: pwsh
+        run: |
+          rustup update stable
+          cargo +stable fmt --all -- --check
+          cargo +stable clippy --workspace --all-targets --locked -- -D warnings
+          cargo +stable test --workspace --locked
+      - name: Install mdBook 0.5.3
+        shell: pwsh
+        run: |
+          $archive = Join-Path $env:RUNNER_TEMP 'mdbook.zip'
+          curl.exe --fail --location --retry 4 --output $archive 'https://github.com/rust-lang/mdBook/releases/download/v0.5.3/mdbook-v0.5.3-x86_64-pc-windows-msvc.zip'
+          if ($LASTEXITCODE -ne 0) { throw 'mdBook download failed' }
+          Expand-Archive -LiteralPath $archive -DestinationPath (Join-Path $env:RUNNER_TEMP 'mdbook')
+      - name: Books and links
+        shell: pwsh
+        run: |
+          $book = Join-Path $env:RUNNER_TEMP 'mdbook/mdbook.exe'
+          & $book build docs/developer
+          & $book test docs/developer
+          & $book build docs/user
+          & $book test docs/user
+          python scripts/check_docs.py
+      - name: Package Windows installer and ZIP
+        shell: pwsh
+        run: |
+          choco install nsis -y --no-progress
+          $book = Join-Path $env:RUNNER_TEMP 'mdbook/mdbook.exe'
+          $nsis = 'C:\Program Files (x86)\NSIS\makensis.exe'
+          ./scripts/package-windows.ps1 -Mdbook $book -MakeNsis $nsis
+          $zip = Get-ChildItem dist/*windows-x64-portable.zip | Select-Object -First 1
+          Expand-Archive -LiteralPath $zip.FullName -DestinationPath (Join-Path $env:RUNNER_TEMP 'package-check')
+          if (-not (Test-Path (Join-Path $env:RUNNER_TEMP 'package-check/help/index.html'))) { throw 'Offline help missing from ZIP' }
+          if (-not (Test-Path (Join-Path $env:RUNNER_TEMP 'package-check/portable.flag'))) { throw 'Portable marker missing' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hdsl-windows-x64
+          path: |
+            dist/*windows-x64-portable.zip
+            dist/*windows-x64-setup.exe
+            dist/SHA256SUMS-windows-x64.txt
+          if-no-files-found: error
+
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: amd64
+            book-target: x86_64-unknown-linux-gnu
+          - runner: ubuntu-24.04-arm
+            arch: arm64
+            book-target: aarch64-unknown-linux-musl
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libfontconfig1-dev libgl1-mesa-dev libxkbcommon-dev libwayland-dev
+          rustup update stable
+      - name: Rust checks
+        run: |
+          cargo +stable fmt --all -- --check
+          cargo +stable clippy --workspace --all-targets --locked -- -D warnings
+          cargo +stable test --workspace --locked
+      - name: Install mdBook 0.5.3
+        run: |
+          curl --fail --location --retry 4 --output "$RUNNER_TEMP/mdbook.tar.gz" \
+            "https://github.com/rust-lang/mdBook/releases/download/v0.5.3/mdbook-v0.5.3-${{ matrix.book-target }}.tar.gz"
+          tar -xzf "$RUNNER_TEMP/mdbook.tar.gz" -C "$RUNNER_TEMP"
+          chmod +x "$RUNNER_TEMP/mdbook"
+      - name: Books and links
+        run: |
+          "$RUNNER_TEMP/mdbook" build docs/developer
+          "$RUNNER_TEMP/mdbook" test docs/developer
+          "$RUNNER_TEMP/mdbook" build docs/user
+          "$RUNNER_TEMP/mdbook" test docs/user
+          python3 scripts/check_docs.py
+      - name: Package Linux deb and portable archive
+        run: |
+          MDBOOK="$RUNNER_TEMP/mdbook" bash scripts/package-linux.sh
+          tar -tzf dist/*linux-${{ matrix.arch }}-portable.tar.gz | grep '/help/index.html'
+          dpkg-deb --contents dist/*_${{ matrix.arch }}.deb | grep '/usr/share/hdsl/help/index.html'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hdsl-linux-${{ matrix.arch }}
+          path: |
+            dist/*linux-${{ matrix.arch }}-portable.tar.gz
+            dist/*_${{ matrix.arch }}.deb
+            dist/SHA256SUMS-linux-${{ matrix.arch }}.txt
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [windows, linux]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: hdsl-*
+          path: dist
+          merge-multiple: true
+      - name: Publish tagged release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --generate-notes

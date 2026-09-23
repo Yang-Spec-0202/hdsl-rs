@@ -527,8 +527,15 @@ fn open_help() -> Result<()> {
         .parent()
         .context("无法定位启动器目录")?
         .join("help/index.html");
+    #[cfg(target_os = "linux")]
+    let system = PathBuf::from("/usr/share/hdsl/help/index.html");
     let source = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/user/book/index.html");
-    let path = if local.is_file() { local } else { source };
+    let path = if local.is_file() { local }
+        else {
+            #[cfg(target_os = "linux")]
+            if system.is_file() { return webbrowser::open(system.to_str().context("帮助路径不是 UTF-8")?).map_err(Into::into); }
+            source
+        };
     if !path.is_file() {
         bail!("尚未生成离线用户手册");
     }
