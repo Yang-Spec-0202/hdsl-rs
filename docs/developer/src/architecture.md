@@ -24,9 +24,9 @@
 
 启动器首页和安装页显示简短公告，说明 [官方仓库 Discussion #7593](https://github.com/deepseek-ai/deepseek-harness/discussions/7593) 有用户报告 `0.1.5-rc.2` 在 Windows Web 启动失败；本地重现 `user patch-layer watching requires the Cordis HMR service`，并发现旧版所需的 `registerConfig` 在解析出的 HMR 1.0.18 中缺失。该讨论尚不是维护者确认的安全公告，界面不得称为安全漏洞。提供原始报告链接及日期，不声称新版已修复该问题。
 
-启动器不修改上游 Harness 的依赖声明、profile patch 或 HMR 启动逻辑。保持主包精确版本安装及独立实例隔离；上游依赖按其发布包声明解析。若特定上游版本安装或启动失败，保留可诊断错误并在公告与用户手册中解释。
+启动器不修改上游 Harness 的依赖声明、profile patch 或 HMR 启动逻辑。保持主包精确版本安装及独立实例隔离；上游依赖按其发布包声明解析。安装目录不得写入针对 `@deepseek-ai/*` 包的 pnpm `overrides`；`allowBuilds` 仅在用户逐项批准构建脚本后写入。若特定上游版本安装或启动失败，保留可诊断错误并在公告与用户手册中解释。
 
-验收：安装页能选择 `0.1.7-alpha.2` 等真实预览版本；默认填写 npm 版本目录中语义版本最高的精确版本，且明确标记预览版；公告准确链接原报告；`0.1.5-rc.2` 不注入修复参数或改写 profile。
+验收：安装页能选择 `0.1.7-alpha.2` 等真实预览版本；默认填写 npm 版本目录中语义版本最高的精确版本，且明确标记预览版；公告准确链接原报告；实例安装不产生上游依赖覆盖，`0.1.5-rc.2` 不注入修复参数或改写 profile。
 
 ## API 设置保存事务（已实现）
 
