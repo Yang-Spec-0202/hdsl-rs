@@ -1,6 +1,6 @@
 # UI 复刻计划：对齐 HMCL
 
-状态：计划中。本页定义把 `hdsl-rs` 的 Slint 界面重做为 HMCL JavaFX 界面的复刻方案；图形资源清单见 [UI 图形资源清单](ui-assets.md)。实施顺序遵循 [文档先行与 Git 工作流](workflow.md)，边界遵循 [架构与上游边界](architecture.md)。
+状态：部分已实现。S0–S6 已落地：设计令牌、组件库、无边框窗口外壳，以及首页、实例列表、下载与安装、实例详情、设置、日志与对话框六个页面；动效与像素校对（S7）和数据接线待完成。页面度量与验收见 [UI 页面设计明细](ui-pages.md)，图形资源清单见 [UI 图形资源清单](ui-assets.md)。实施顺序遵循 [文档先行与 Git 工作流](workflow.md)，边界遵循 [架构与上游边界](architecture.md)。
 
 ## 目标与非目标
 
@@ -111,21 +111,22 @@ HMCL 页面较多，首版收敛到下列页面，保持 HMCL 的区域结构与
 
 - 实例详情标签：只保留「实例设置 / 版本组件 / 插件管理」三个标签，HMCL 的模组管理、资源包管理、世界管理、原理图管理不实现。
 - 首页侧边「账户」分组：显示当前用户的 GitHub 昵称与头像；账户登录与切换功能不实现，头像与昵称只读。
+- 下载页分类：HMCL 的模组、资源包、光影、世界不适用，首版只保留「版本」与「插件」两个分类。
 
 ## 分阶段切片
 
 每个切片按 [文档先行与 Git 工作流](workflow.md) 拆成 `docs(dev)` → `feat` → `docs(user)`，每个提交可构建。
 
-| 阶段 | 内容 | 产出 |
-| --- | --- | --- |
-| S0 | 主题令牌、组件库骨架、无边框窗口外壳、导航与页面切换 | `theme.slint`、`components/`、`WindowFrame`、`Navigator` |
-| S1 | 首页 | `pages/home.slint` + 接线 |
-| S2 | 实例列表 | `pages/instance-list.slint` + 接线 |
-| S3 | 实例详情 | `pages/instance-detail.slint` + 接线 |
-| S4 | 下载与安装向导 | `pages/download.slint`、`versions.slint`、`confirm.slint` |
-| S5 | 设置 | `pages/settings/*.slint`（6 个标签） |
-| S6 | 对话框、提示、日志窗口 | `components/dialog.slint`、`pages/log.slint` |
-| S7 | 动效、资源接入、像素校对 | 动画与截图比对 |
+| 阶段 | 内容 | 产出 | 状态 |
+| --- | --- | --- | --- |
+| S0 | 主题令牌、组件库、无边框窗口外壳、导航与页面切换 | `theme.slint`、`components/`、`app.slint` 外壳 | 已实现 |
+| S1 | 首页 | `pages/home.slint` | 已实现 |
+| S2 | 实例列表 | `pages/instances.slint` | 已实现 |
+| S3 | 下载与安装 | `pages/install.slint` | 已实现 |
+| S4 | 实例详情 | `pages/instance-detail.slint` | 已实现 |
+| S5 | 设置（8 个标签） | `pages/settings.slint` | 已实现 |
+| S6 | 对话框、提示、日志窗口 | `components/dialog.slint`、`pages/log.slint` | 已实现 |
+| S7 | 动效、资源接入、像素校对 | 动画与截图比对 | 计划中 |
 
 ## 子智能体分工
 

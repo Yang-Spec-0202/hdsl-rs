@@ -11,7 +11,7 @@
 - 按原版 HMCL 的页面层级、布局和动效重做首页、安装向导、实例页与设置页；替换为 Harness 内容。图标和角色插画原创设计，不复制 HMCL、HMCL-rs 或 DeepSeek 娘的资源。保留 GPLv3 许可及必要的来源声明。[HMCL 许可说明](https://github.com/HMCL-dev/HMCL#license)
 - 界面复刻的度量、组件库、页面映射、分阶段切片与子智能体分工见 [UI 复刻计划：对齐 HMCL](ui-parity.md)；待生成的原创图形资源见 [UI 图形资源清单](ui-assets.md)。设置页命名按需求调整：全局游戏设置 → 全局设置，Java 管理 → 环境管理，通用、外观、下载保持不变。
 - 自动下载并校验 Node.js 24 LTS、pnpm 11.7.0 和指定的 Harness 精确版本。每个实例固定版本、工作目录、端口和独立 `DSH_HOME`，支持启动、停止与日志查看。升级创建新实例，保留旧实例及其 home。[Harness CLI 参考](https://github.com/deepseek-ai/deepseek-harness/blob/master/apps/cli/reference/README.md)
-- 模型路由、API Key 与端点由每个实例的 Harness 本体管理；启动器不提供这些编辑入口，原“API 与设置”页改为暂时留空的“设置”页。第三方认证交给插件界面。[官方模型设置](https://deepseek-harness.github.io/deepseek-harness/en/guide/providers)
+- 模型路由、API Key 与端点由每个实例的 Harness 本体管理；启动器不提供这些编辑入口。“设置”页按 HMCL 版式实现，含「全局设置 / 环境管理 / 通用 / 外观 / 下载 / 帮助 / 反馈 / 关于」，但不含任何写入 Harness 凭据或模型设置的入口。第三方认证交给插件界面。[官方模型设置](https://deepseek-harness.github.io/deepseek-harness/en/guide/providers)
 
 ## 插件目录与兼容性
 
