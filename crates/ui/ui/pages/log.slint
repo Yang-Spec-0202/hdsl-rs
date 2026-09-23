@@ -1,25 +1,87 @@
 ﻿// Runtime log page. HMCL counterpart: ui/LogWindow.
 import { ScrollView } from "std-widgets.slint";
 import { Theme } from "../theme.slint";
-import { PageTitle } from "../components/common.slint";
+
+// HMCL .log-toggle: compact level filter button. Active = filled primary,
+// inactive = transparent with an outline.
+component LevelToggle inherits Rectangle {
+    in property <string> label;
+    in property <bool> active: false;
+    callback clicked();
+
+    height: 26px;
+    width: label-text.preferred-width + Theme.space-16;
+    border-radius: Theme.radius-4;
+    border-width: 1px;
+    border-color: root.active ? Theme.primary : Theme.outline;
+    background: root.active ? Theme.primary : transparent;
+
+    label-text := Text {
+        text: root.label;
+        color: root.active ? Theme.on-primary : Theme.on-surface-variant;
+        font-size: Theme.font-size-12;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        width: parent.width;
+        height: parent.height;
+    }
+    ta := TouchArea {
+        clicked => { root.clicked(); }
+    }
+    Rectangle {
+        width: parent.width;
+        height: parent.height;
+        border-radius: parent.border-radius;
+        background: ta.pressed
+            ? (root.active ? Theme.on-primary.with-alpha(0.16) : Theme.on-surface.with-alpha(0.12))
+            : (ta.has-hover && !root.active ? Theme.on-surface.with-alpha(0.04) : transparent);
+        animate background { duration: Theme.motion-short4; }
+    }
+}
 
 export component LogPage inherits Rectangle {
     in property <string> log-text;
 
+    property <int> min-level: 0;
+    property <bool> always-on-top: false;
+
     background: transparent;
 
     VerticalLayout {
-        padding: Theme.space-24;
-        spacing: Theme.space-12;
-        PageTitle { label: "运行日志"; }
-        ScrollView {
+        padding: Theme.space-12;
+        spacing: Theme.space-8;
+
+        // --- Toolbar (HMCL LogWindowSkin top BorderPane) ---
+        HorizontalLayout {
+            spacing: Theme.space-6;
+            alignment: start;
+            LevelToggle { label: "ALL"; active: root.min-level == 0; clicked => { root.min-level = 0; } }
+            LevelToggle { label: "TRACE"; active: root.min-level == 1; clicked => { root.min-level = 1; } }
+            LevelToggle { label: "DEBUG"; active: root.min-level == 2; clicked => { root.min-level = 2; } }
+            LevelToggle { label: "INFO"; active: root.min-level == 3; clicked => { root.min-level = 3; } }
+            LevelToggle { label: "WARN"; active: root.min-level == 4; clicked => { root.min-level = 4; } }
+            LevelToggle { label: "ERROR"; active: root.min-level == 5; clicked => { root.min-level = 5; } }
+            Rectangle { horizontal-stretch: 1; background: transparent; }
+            LevelToggle { label: "始终置顶"; active: root.always-on-top; clicked => { root.always-on-top = !root.always-on-top; } }
+        }
+
+        // --- Log surface (HMCL .log-window list, monospace body) ---
+        Rectangle {
             vertical-stretch: 1;
-            Text {
-                text: root.log-text;
-                font-family: "Consolas";
-                font-size: Theme.font-size-12;
-                color: Theme.on-surface;
-                wrap: word-wrap;
+            background: Theme.surface-container;
+            border-radius: Theme.radius-4;
+            ScrollView {
+                x: Theme.space-8;
+                y: Theme.space-8;
+                width: parent.width - Theme.space-16;
+                height: parent.height - Theme.space-16;
+                Text {
+                    text: root.log-text;
+                    font-family: "Consolas";
+                    font-size: Theme.font-size-12;
+                    color: Theme.on-surface;
+                    wrap: word-wrap;
+                }
             }
         }
     }
