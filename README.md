@@ -13,7 +13,7 @@ HDSL 是用 Rust 与 [Slint](https://slint.dev/) 编写的 DeepSeek Harness 桌�
 - 动效：壁纸背景、页面淡入、按下水波纹、窗口开合。
 - 资源：原创 Roxy Bot 标识、壁纸与立绘已入库；单色图标当前为原创占位图。
 
-待完成：设置持久化、主题与背景切换实际生效、插件与下载真实数据接线、实例图标选择对话框、日志逐行着色。详见[开发者手册](docs/developer/src/README.md)的 [UI 页面设计明细](docs/developer/src/ui-pages.md) 与 [实施计划](docs/developer/src/plan.md)。
+首版未完成项（设置持久化、外观生效、下载与插件数据接线、原创图形资源替换、发行验证等）见[实施计划的首版未完成项](docs/developer/src/plan.md#首版未完成项)；页面度量与验收见 [UI 页面设计明细](docs/developer/src/ui-pages.md)，总览见[开发者手册](docs/developer/src/README.md)。
 
 ## 界面预览
 
