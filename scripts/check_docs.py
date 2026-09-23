@@ -76,6 +76,10 @@ def main() -> int:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     if "docs/developer/src/status.md" not in readme:
         errors.append("README.md: missing canonical feature status link")
+    for phrase in ("子智能体", "状态：已实现", "状态：部分已实现",
+                   "状态：计划中", "## 待实现切片", "界面复刻", "像素校对"):
+        if phrase in readme:
+            errors.append(f"README.md: obsolete phrase {phrase}")
     for error in errors:
         print(error, file=sys.stderr)
     if errors:

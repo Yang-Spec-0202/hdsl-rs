@@ -1,61 +1,55 @@
-# AGENTS.md
+# HDSL 仓库协作约定
 
-本文件约束在 `hdsl-rs` 仓库中工作的自动化模型。项目范围见 `docs/developer/src/plan.md`；功能完成度以 `docs/developer/src/status.md` 为唯一来源。描述功能前核对核心实现、应用回调和界面行为。
+本文件供在 `hdsl-rs` 中修改代码、文档或发行配置的自动化开发者使用。先阅读本文件，再阅读与任务直接相关的文件；以当前源码和可复现的行为判断事实。不要把 issue、旧文档或审查意见当作已经验证的实现状态。
 
-## 项目边界
+## 项目与文件位置
 
-- `hdsl-rs` 是独立 Git 仓库。同级 `reference/`（HMCL、HMCL-rs、deepseek-harness、旧版 HDSL）只读参考，其源码、图标、壁纸与角色插画不得复制进本仓库或提交历史。
-- 图形资源必须原创；保留 GPL-3.0-only 许可与必要的来源声明。
-- 只管理上游 DeepSeek Harness，不修改其源码、依赖声明、profile patch 或启动逻辑。
+- `crates/core`：实例存储、运行时、下载校验、进程、npm 与插件兼容逻辑，不依赖 Slint。
+- `crates/ui/ui`：Slint 主题、组件、页面和 `app.slint` 中的导航及回调。
+- `crates/app`：将界面回调连接到 `core` 的可执行程序。
+- `docs/user`：用户步骤、限制和排障；`docs/developer`：稳定设计、契约、构建与维护说明。
+- `docs/developer/src/status.md`：功能完成度的唯一来源；`verification.md`：带日期、版本和环境的单次验证记录；`plan.md`：范围与后续方向。
+- 根目录 `README.md`：项目介绍、开发预览状态、构建入口和文档索引。
+- 同级的 HMCL、HMCL-rs、deepseek-harness 和旧版 HDSL 等参考目录只读，不纳入本仓库历史。
 
-## 文档先行（强制）
+## 开始工作与判断问题
 
-每项用户可见功能按固定顺序提交，且每个提交都可构建：
+1. 查看工作树、目标分支和相关实现；尊重已有改动。对 issue 或审查意见，先写出可核对的路径、触发条件和预期行为，再判断是否成立。
+2. 追踪一项功能的完整使用路径：**可见入口 → 页面或命令 → 回调 → 应用服务 → 核心逻辑 → 成功与失败反馈**。只有下游代码存在，不代表用户可用；页面已绘制也不代表操作生效。
+3. 区分“源码已实现”“入口可达且已接线”“自动化测试通过”“真实服务已验证”“已有公开发行包”。更新 `status.md` 时明确尚缺的环节；其他文档引用它，不再维护第二份完成度清单。
+4. 使用真实 UI 文案和当前文件路径。修改导航、设置或插件功能时，同时检查帮助文档与空实例、切换实例、失败恢复的行为。无法复现的问题说明查过的证据，不猜测修复。
 
-1. `docs(dev): ...`：先写行为、上游契约、失败路径与验收条件，并在状态页说明尚未接入的部分。
-2. `feat:` 或 `fix:`：实现代码与测试，核对界面接线后更新状态页。
-3. `docs(user): ...`：补操作步骤、截图说明与排障。
+## 修改方式
 
-- 一次提交只覆盖一个可回滚的功能切片，不得把整项功能压成一个大提交。
-- 内部重构没有用户行为变化时可省略 `docs(user)`，但必须更新受影响的开发者文档。
-- 提交前运行适用的格式、测试与文档构建检查。
-- 发行版本打 Git 标签，保留分阶段历史以便回滚。
-- 按此协议组织提交；未获指示时不做无关提交、不改写历史、不使用 `--no-verify` 或强制推送。
+- 先确定行为、上游契约与失败路径，再修改最小相关范围。新增用户功能时更新开发者契约、实现与必要测试、用户说明和状态页；文档修正或内部重构只更新实际受影响的文件。
+- 保持 `core`、`app`、`ui` 的职责边界。UI 通过属性与回调传递事件；可复用组件放在 `ui/components/`，具体页面行为放在相应页面，不把无关状态塞进共享组件。
+- 用户可见操作必须有可达入口、明确反馈和可用的取消或失败处理。对插件安装、删除实例等会改动磁盘的操作，验证确认流程与失败恢复。
+- 不用为了满足检查器而硬塞固定措辞。自动化检查覆盖已知回归，人工复核事实、语气与可达性；新增文档入口时同时更新链接检查范围。
 
-## Git 卫生
+## 文档写作
 
-- 忽略构建产物、下载的运行时、实例数据与密钥；提交应用的 `Cargo.lock`。
-- 不得提交密钥、`.credentials.yaml`、实例数据、下载的运行时或生成的书籍（`docs/**/book/`）。
-- 提交信息沿用现有单行风格：`type: 摘要`（如 `feat:`、`fix:`、`docs(dev):`、`docs(user):`）。
-- 参考项目不进入本仓库版本历史。
+- 面向首次接触项目的读者写 README 和用户手册；开发者手册描述稳定设计与约束。本文件承载自动化开发者约定，不把模型编排、提示词、开发会话流水账写入对外文档。
+- 陈述可由当前代码或具体验证支持的事实。上游临时故障保留来源与最后核验日期；单次测试放 `verification.md`，不写成长期保证。
+- HMCL 可作为导航和交互的参考；图形资源独立创作，不复制参考项目的源码、图标、壁纸或插画，也不承诺视觉逐项相同。
+- 两本 mdBook 的 `create-missing = false` 保持不变；手册 HTML 随发行包离线提供。
 
-## 文档结构
+## 上游与数据安全边界
 
-- 两本简体中文优先的 mdBook：`docs/developer`（架构、数据格式、上游接口、兼容规则、构建与测试）与 `docs/user`（安装、实例、插件、设置、排障）。
-- 两本 `book.toml` 均设置 `create-missing = false`，不得让 mdBook 自动创建缺失页面。
-- 完成度仅写在 `docs/developer/src/status.md`。设计页描述稳定契约，日期性测试放 `verification.md`，上游临时故障放有核验日期的用户公告。
-- 面向用户与贡献者的文档使用事实陈述；不得残留模型任务分工、提示词式步骤或一次性开发会话记录。
-- 用户手册 HTML 随安装包与便携包提供；应用“帮助”按钮在系统浏览器打开本地副本，离线可用；Markdown 源文件保留在仓库。
-- `docs/images/` 预留给 README 与两本手册的截图，完善文档时再引用，不要删除。
+- 仅管理上游 DeepSeek Harness，不改其源码、依赖声明、profile patch 或启动逻辑；实例安装使用 `@deepseek-ai/dsh@<精确版本>`，启动使用该实例的入口、工作目录与专属 `DSH_HOME`。
+- Node 官方下载验证 SHA256，npm 包验证 integrity；插件操作使用同一实例的 `dsh plugin --profile web`，不调用系统全局 `dsh`。
+- 运行时与插件元数据只从 Node.js 官方发行索引、npm registry、插件目录和 GitHub 元数据获取；新增网络来源先更新契约与校验方式。
+- 插件须有匹配当前实例的 `@deepseek-ai/*` 依赖证据或附日期与证据的人工兼容记录。未知或冲突时不开放安装。停止实例、备份 profile、调用官方命令并核验配置；失败恢复原目录。
+- 不为 `@deepseek-ai/*` 写 pnpm `overrides`。构建脚本只在用户逐项确认后加入该实例的 `allowBuilds`。
+- Harness 管理模型路由与凭据；启动器不写 `.credentials.yaml` 或 `settings.yaml`，不提供 API Key、端点或模型编辑入口，也不把凭据写入日志或错误。
 
-## 上游与安全约束
+## 检查与交付
 
-- 安装 Harness 只使用 npm 精确版本 `@deepseek-ai/dsh@<版本>`；启动使用该安装的 `bin` 入口、实例工作目录与实例专属 `DSH_HOME`。
-- 插件操作使用该实例同一版本的 `dsh plugin --profile web`，不得使用系统全局 `dsh`。
-- 不得为 `@deepseek-ai/*` 包写入 pnpm `overrides`；`allowBuilds` 仅在用户逐项批准构建脚本后写入。
-- 网络来源限定为 Node.js 官方发行索引、npm registry、插件目录与 GitHub 元数据；安装前验证 Node 官方 SHA256 与 npm integrity。
-- 不提供写入实例 API Key、端点或模型设置的入口；模型路由与凭据由每个实例的 Harness 本体管理。启动器不得写入或改写实例的 `.credentials.yaml` / `settings.yaml`，且密钥不得出现在日志或错误中。
-- 插件只在具备明确 `@deepseek-ai/*` 依赖证据或人工维护兼容记录时提供安装；证据缺失或冲突时不提供。安装前停止实例并备份 profile，失败时恢复备份。
+- 文档：`python scripts/check_docs.py`；有 mdBook 0.5.3 时对两本书各运行 `mdbook build` 和 `mdbook test`。
+- Rust 或 Slint 改动：`cargo fmt --all -- --check`、`cargo clippy --workspace --all-targets --locked -- -D warnings`、`cargo test --workspace --locked`。需联网的 ignored 测试单独运行，报告未执行的原因。
+- 打包或发行变更：检查 Windows `scripts/package-windows.ps1` 和 Linux `scripts/package-linux.sh` 的适用路径及 CI；发行前另做真实 Harness 与插件端到端验证。Windows GNU 构建需将 `C:\msys64\mingw64\bin` 加入 `PATH` 以链接 `shlwapi`。
+- 交付时说明修改了什么、相关入口如何到达、运行过哪些检查以及仍未验证的部分。不要用“CI 绿色”推断尚未测过的真实服务或平台。
 
-## 验证
+## Git 与资源
 
-在 `hdsl-rs` 目录运行与 CI 一致的检查：
-
-- `cargo fmt --all -- --check`
-- `cargo clippy --workspace --all-targets --locked -- -D warnings`
-- `cargo test --workspace --locked`（需要网络的测试标为 `#[ignore]`，用 `-- --ignored` 单独运行）
-- `mdbook build docs/developer`、`mdbook test docs/developer`、`mdbook build docs/user`、`mdbook test docs/user`（mdBook 0.5.3）
-- `python scripts/check_docs.py`
-- 打包：Windows `scripts/package-windows.ps1`，Linux `bash scripts/package-linux.sh`
-
-Windows GNU 目标链接需要 `shlwapi`：构建前把 `C:\msys64\mingw64\bin` 加入 `PATH`，否则链接器报 `ld: cannot find -lshlwapi`。
+- 保留独立仓库历史；单次提交聚焦可回滚的改动并保持可构建。提交风格沿用 `type: 摘要`，发行版本打标签。未获指示不改写历史、不强制推送、不跳过钩子。
+- 提交 `Cargo.lock`；不提交构建产物、生成的 mdBook、实例数据、运行时、密钥或 `.credentials.yaml`。若使用库外候选图标检查布局，在提交前还原覆盖的资源，只提交原创图形资源及必要许可声明。
