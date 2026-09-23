@@ -1,0 +1,25 @@
+// Instance detail page. HMCL counterpart: ui/instances/GameInstancePage.
+// Stub for slice S4; the full three-tab layout is implemented by the slice.
+import { Theme } from "../theme.slint";
+import { PageTitle } from "../components/common.slint";
+
+export component InstanceDetailPage inherits Rectangle {
+    in-out property <int> page;
+    in property <string> instance-name;
+    in property <string> instance-version;
+    in property <string> instance-port;
+
+    background: transparent;
+
+    VerticalLayout {
+        padding: Theme.space-24;
+        spacing: Theme.space-12;
+        PageTitle { label: "实例设置"; }
+        Text {
+            text: root.instance-name + "  " + root.instance-version;
+            color: Theme.on-surface-variant;
+            font-size: Theme.font-size-13;
+        }
+        Rectangle { vertical-stretch: 1; background: transparent; }
+    }
+}

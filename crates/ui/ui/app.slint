@@ -10,6 +10,7 @@ import { InstancesPage } from "pages/instances.slint";
 import { PluginsPage } from "pages/plugins.slint";
 import { SettingsPage } from "pages/settings.slint";
 import { LogPage } from "pages/log.slint";
+import { InstanceDetailPage } from "pages/instance-detail.slint";
 
 export { InstanceRow, PluginRow, VersionRow }
 
@@ -165,8 +166,8 @@ export component AppWindow inherits Window {
                             title: "实例管理";
                             subtitle: root.active-instance-name;
                             icon: "list-bulleted";
-                            selected: root.page == 2;
-                            clicked => { root.page = 2; }
+                            selected: root.page == 6;
+                            clicked => { root.page = 6; }
                         }
                         AdvancedListItem {
                             title: "实例列表";
@@ -265,6 +266,14 @@ export component AppWindow inherits Window {
                         width: parent.width;
                         height: parent.height;
                         log-text: root.log-text;
+                    }
+                    if root.page == 6: InstanceDetailPage {
+                        width: parent.width;
+                        height: parent.height;
+                        page <=> root.page;
+                        instance-name: root.active-instance-name;
+                        instance-version: root.active-instance-version;
+                        instance-port: root.active-instance-port;
                     }
                 }
             }
