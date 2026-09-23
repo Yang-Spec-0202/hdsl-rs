@@ -8,6 +8,8 @@
 
 查看“运行日志”；核对工作目录是否仍存在、端口是否空闲，以及所选 Harness 版本是否支持 `web` profile。每个实例的安装和 home 位于数据目录下独立的 UUID 文件夹。
 
+若 `0.1.5-rc.2` 在 Windows 报 HMR 服务缺失或 `registerConfig` 错误，请阅读[上游版本公告](announcements.md)。启动器不会修改该上游版本的依赖或 profile 来掩盖问题。
+
 ## 插件没有显示
 
 插件版本必须有匹配的 `@deepseek-ai/*` 依赖范围或项目维护的精确兼容记录。缺少包元数据、声明冲突、GitHub 来源不符时不会提供安装。
