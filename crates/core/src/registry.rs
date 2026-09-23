@@ -128,6 +128,24 @@ mod tests {
     }
     #[test]
     #[ignore = "queries live npm metadata"]
+    fn lists_harness_versions_newest_first() {
+        let registry = Registry::new().unwrap();
+        let versions = registry.versions("@deepseek-ai/dsh").unwrap();
+        assert!(
+            versions.len() > 3,
+            "npm 目录应返回全部已发布版本，实际为 {versions:?}"
+        );
+        let mut sorted = versions.clone();
+        sorted.sort_by(|a, b| {
+            b.parse::<Version>()
+                .unwrap()
+                .cmp(&a.parse::<Version>().unwrap())
+        });
+        assert_eq!(versions, sorted);
+    }
+
+    #[test]
+    #[ignore = "queries live npm metadata"]
     fn full_metadata_retains_bundle_and_repository() {
         let registry = Registry::new().unwrap();
         let manifest = registry

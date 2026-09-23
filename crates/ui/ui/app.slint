@@ -73,6 +73,7 @@ export component AppWindow inherits Window {
     in-out property <[InstanceRow]> instances;
     in-out property <[PluginRow]> plugins;
     in-out property <[VersionRow]> available-versions;
+    in-out property <int> available-version-count: 0;
     in-out property <[string]> installed-plugins;
     in-out property <string> status-text: "准备就绪";
     in-out property <string> log-text: "";
@@ -196,20 +197,26 @@ export component AppWindow inherits Window {
                         version-input := LineEdit { text <=> root.form-version; placeholder-text: "例如 0.1.7-alpha.2"; horizontal-stretch: 1; }
                         ActionButton { width: 110px; label: "刷新目录"; clicked => { root.refresh-versions(); } }
                     }
-                    Text { text: "npm 版本目录（含 alpha、beta、rc 预览版）；选择后仍按精确版本安装。";
+                    Text { text: "npm 版本目录（含 alpha、beta、rc 预览版）；共 " + root.available-version-count + " 个版本，可滚动选择。";
                         color: #718198; font-size: 12px; }
-                    ScrollView { height: 105px;
-                        VerticalLayout { spacing: 4px;
-                            for row in root.available-versions: Rectangle {
-                                height: 32px; background: root.form-version == row.version ? #e6effe : white;
-                                border-radius: 5px;
-                                HorizontalLayout { padding-left: 9px; padding-right: 7px; spacing: 8px;
-                                    Text { text: row.version; color: #34435a; font-size: 13px; horizontal-stretch: 1;
-                                        vertical-alignment: center; }
-                                    Text { text: row.label; color: #8b672b; font-size: 11px; width: 90px;
-                                        vertical-alignment: center; }
-                                    ActionButton { width: 62px; height: 27px; label: "选择";
-                                        clicked => { root.form-version = row.version; } }
+                    Rectangle {
+                        vertical-stretch: 1;
+                        min-height: 150px;
+                        background: white;
+                        border-radius: 6px;
+                        ScrollView {
+                            VerticalLayout { spacing: 4px; padding: 5px;
+                                for row in root.available-versions: Rectangle {
+                                    height: 32px; background: root.form-version == row.version ? #e6effe : #f8f9fc;
+                                    border-radius: 5px;
+                                    HorizontalLayout { padding-left: 9px; padding-right: 7px; spacing: 8px;
+                                        Text { text: row.version; color: #34435a; font-size: 13px; horizontal-stretch: 1;
+                                            vertical-alignment: center; }
+                                        Text { text: row.label; color: #8b672b; font-size: 11px; width: 90px;
+                                            vertical-alignment: center; }
+                                        ActionButton { width: 62px; height: 27px; label: "选择";
+                                            clicked => { root.form-version = row.version; } }
+                                    }
                                 }
                             }
                         }
@@ -224,7 +231,6 @@ export component AppWindow inherits Window {
                     port-input := LineEdit { text: "3080"; }
                     ActionButton { width: 170px; label: "创建并安装"; primary: true;
                         clicked => { root.create-instance(name-input.text, version-input.text, workspace-input.text, port-input.text); } }
-                    Rectangle { vertical-stretch: 1; background: transparent; }
                 }
                 if root.page == 2: VerticalLayout {
                     spacing: 12px;

@@ -185,9 +185,9 @@ fn wire_callbacks(ui: &AppWindow, state: &Arc<Controller>) {
         job(weak.clone(), "读取版本目录", move || {
             let versions = state.registry.versions("@deepseek-ai/dsh")?;
             let latest = versions.first().context("npm 暂无 Harness 版本")?.clone();
+            let count = versions.len() as i32;
             let rows = versions
                 .into_iter()
-                .take(12)
                 .map(|version| VersionRow {
                     label: version_label(&version).into(),
                     version: version.into(),
@@ -195,6 +195,7 @@ fn wire_callbacks(ui: &AppWindow, state: &Arc<Controller>) {
                 .collect::<Vec<_>>();
             post(update, move |ui| {
                 ui.set_available_versions(ModelRc::new(VecModel::from(rows)));
+                ui.set_available_version_count(count);
                 ui.set_latest_version(latest.clone().into());
                 if ui.get_form_version().is_empty() {
                     ui.set_form_version(latest.into());
