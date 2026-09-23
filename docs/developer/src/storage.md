@@ -1,6 +1,6 @@
 # 实例与磁盘布局
 
-状态：已实现。实例按 UUID 保存，精确版本与工作目录在创建时验证。
+实例按 UUID 保存，精确版本与工作目录在创建时验证。功能进度见[功能状态与限制](status.md)。
 
 安装版的数据根目录为 Windows `%LOCALAPPDATA%/hdsl-rs` 或 Linux `${XDG_DATA_HOME:-~/.local/share}/hdsl-rs`。便携版在可执行文件旁有 `portable.flag`，数据根为同级 `data/`。两种模式不会自动读取 Java HDSL 数据。
 

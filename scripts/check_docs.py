@@ -48,6 +48,34 @@ def check_book(book: Path) -> list[str]:
 
 def main() -> int:
     errors = check_book(ROOT / "docs/developer") + check_book(ROOT / "docs/user")
+    status = ROOT / "docs/developer/src/status.md"
+    if not status.is_file():
+        errors.append("docs/developer/src/status.md: missing canonical feature status")
+    else:
+        content = status.read_text(encoding="utf-8")
+        for feature in ("插件安装与卸载", "运行日志", "设置与外观", "打包与公开发行"):
+            if f"| {feature} |" not in content:
+                errors.append(f"docs/developer/src/status.md: missing feature {feature}")
+
+    # Keep progress claims in one place and prevent old process notes from
+    # returning to the maintained design pages.
+    design_pages = (
+        "README.md", "plan.md", "architecture.md", "compatibility.md",
+        "release.md", "ui-parity.md", "ui-pages.md", "ui-assets.md",
+        "storage.md", "workflow.md",
+    )
+    for name in design_pages:
+        page = ROOT / "docs/developer/src" / name
+        content = page.read_text(encoding="utf-8")
+        if "status.md" not in content:
+            errors.append(f"{page.relative_to(ROOT)}: missing status reference")
+        for phrase in ("子智能体", "状态：已实现", "状态：部分已实现",
+                       "状态：计划中", "## 待实现切片"):
+            if phrase in content:
+                errors.append(f"{page.relative_to(ROOT)}: obsolete phrase {phrase}")
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    if "docs/developer/src/status.md" not in readme:
+        errors.append("README.md: missing canonical feature status link")
     for error in errors:
         print(error, file=sys.stderr)
     if errors:
