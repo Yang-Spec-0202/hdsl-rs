@@ -1,6 +1,6 @@
 # HDSL 用户手册
 
-HDSL 为每个 DeepSeek Harness 实例保存独立的版本、工作目录和用户数据。当前为开发预览版，发行包尚未提供。
+HDSL 为每个 DeepSeek Harness 实例保存独立的版本、工作目录和用户数据。当前为开发预览版；仓库已提供 Windows 与 Linux 打包脚本，公开发行尚未发布。
 
 从左侧导航进入安装、实例、插件、API 和日志页面。一个实例对应一个固定 Harness 版本；升级通过创建新实例完成。HDSL 不导入旧版 Java HDSL 的数据。
 
