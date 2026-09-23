@@ -98,6 +98,7 @@ export component AppWindow inherits Window {
     callback install-plugin(string, string, string);
     callback remove-plugin(string);
     callback save-api(string, string, string);
+    callback remove-api-key();
     callback open-web-settings();
     callback open-help();
     callback approve-build(bool);
@@ -268,6 +269,7 @@ export component AppWindow inherits Window {
                             HorizontalLayout { spacing: 10px;
                                 ActionButton { width: 120px; label: "保存"; primary: true;
                                     clicked => { root.save-api(api-key.text, api-url.text, api-model.text); api-key.text = ""; } }
+                                ActionButton { width: 120px; label: "移除密钥"; clicked => { root.remove-api-key(); api-key.text = ""; } }
                                 ActionButton { width: 180px; label: "打开 Harness 网页"; clicked => { root.open-web-settings(); } }
                                 Rectangle { horizontal-stretch: 1; background: transparent; }
                             }

@@ -1,3 +1,4 @@
+use hdsl_core::credentials::{redact_log_line, save_deepseek_api};
 use hdsl_core::harness::{dsh_entry, install_dsh, managed_path, run_dsh};
 use hdsl_core::plugin::{
     curated_catalog, install_plugin, installed_core_versions, installed_plugins, latest_compatible,
@@ -184,6 +185,13 @@ fn installs_exact_harness_in_isolated_home() {
     )
     .unwrap();
     install_dsh(&paths, &other, &node, &pnpm, &registry, |_review| Ok(true)).unwrap();
+    save_deepseek_api(
+        &instance.home(&paths).unwrap(),
+        Some("sk-integration-secret-12345"),
+        Some("https://api.deepseek.com/anthropic"),
+        Some("deepseek-flash"),
+    )
+    .unwrap();
     assert_ne!(instance.dsh(&paths).unwrap(), other.dsh(&paths).unwrap());
     assert_ne!(instance.home(&paths).unwrap(), other.home(&paths).unwrap());
     let log_a = temp.path().join("web-a.log");
@@ -192,7 +200,15 @@ fn installs_exact_harness_in_isolated_home() {
     let mut web_b = start_web(&paths, &other, &node, &log_b);
     wait_for_web(&mut web_a, instance.port, &log_a);
     wait_for_web(&mut web_b, other.port, &log_b);
+    for log in [log_a.clone(), log_a.with_extension("err")] {
+        let line = std::fs::read_to_string(log).unwrap_or_default();
+        assert!(
+            !redact_log_line(&instance.home(&paths).unwrap(), &line)
+                .contains("sk-integration-secret-12345")
+        );
+    }
     web_a.0.kill().unwrap();
     web_a.0.wait().unwrap();
-    assert!(TcpStream::connect(("127.0.0.1", other.port)).is_ok());
+    assert!(web_b.0.try_wait().unwrap().is_none());
+    wait_for_web(&mut web_b, other.port, &log_b);
 }

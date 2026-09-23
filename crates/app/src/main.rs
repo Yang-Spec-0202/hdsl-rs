@@ -394,16 +394,24 @@ fn wire_callbacks(ui: &AppWindow, state: &Arc<Controller>) {
         let (key, endpoint, model) = (key.to_string(), endpoint.to_string(), model.to_string());
         job(weak.clone(), "保存 API 设置", move || {
             let home = selected_instance(&state)?.home(&state.paths)?;
-            if !key.is_empty() {
-                credentials::set_key(&home, "DEEPSEEK_API_KEY", Some(&key))?;
-            }
-            if !endpoint.is_empty() || !model.is_empty() {
-                credentials::set_deepseek_settings(
-                    &home,
-                    (!endpoint.is_empty()).then_some(endpoint.as_str()),
-                    (!model.is_empty()).then_some(model.as_str()),
-                )?;
-            }
+            credentials::save_deepseek_api(
+                &home,
+                (!key.is_empty()).then_some(key.as_str()),
+                (!endpoint.is_empty()).then_some(endpoint.as_str()),
+                (!model.is_empty()).then_some(model.as_str()),
+            )?;
+            refresh_instances(&state, update);
+            Ok(())
+        });
+    });
+    let weak = ui.as_weak();
+    let controller = state.clone();
+    ui.on_remove_api_key(move || {
+        let state = controller.clone();
+        let update = weak.clone();
+        job(weak.clone(), "移除 API Key", move || {
+            let home = selected_instance(&state)?.home(&state.paths)?;
+            credentials::set_key(&home, "DEEPSEEK_API_KEY", None)?;
             refresh_instances(&state, update);
             Ok(())
         });
@@ -530,12 +538,16 @@ fn open_help() -> Result<()> {
     #[cfg(target_os = "linux")]
     let system = PathBuf::from("/usr/share/hdsl/help/index.html");
     let source = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/user/book/index.html");
-    let path = if local.is_file() { local }
-        else {
-            #[cfg(target_os = "linux")]
-            if system.is_file() { return webbrowser::open(system.to_str().context("帮助路径不是 UTF-8")?).map_err(Into::into); }
-            source
-        };
+    let path = if local.is_file() {
+        local
+    } else {
+        #[cfg(target_os = "linux")]
+        if system.is_file() {
+            return webbrowser::open(system.to_str().context("帮助路径不是 UTF-8")?)
+                .map_err(Into::into);
+        }
+        source
+    };
     if !path.is_file() {
         bail!("尚未生成离线用户手册");
     }

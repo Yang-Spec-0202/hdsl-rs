@@ -1,5 +1,5 @@
 use crate::paths::replace_file;
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result, anyhow, bail};
 use serde_yaml::{Mapping, Value};
 use std::path::Path;
 
@@ -54,6 +54,19 @@ pub fn redact_log_line(home: &Path, line: &str) -> String {
 }
 
 pub fn set_key(home: &Path, key: &str, secret: Option<&str>) -> Result<()> {
+    let bytes = key_document(home, key, secret)?;
+    std::fs::create_dir_all(home)?;
+    let file = home.join(".credentials.yaml");
+    replace_file(&file, &bytes)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o600))?;
+    }
+    Ok(())
+}
+
+fn key_document(home: &Path, key: &str, secret: Option<&str>) -> Result<Vec<u8>> {
     if !valid_ref(key) {
         bail!("无效的 API 凭据名称");
     }
@@ -71,15 +84,7 @@ pub fn set_key(home: &Path, key: &str, secret: Option<&str>) -> Result<()> {
     } else {
         refs.remove(Value::String(key.into()));
     }
-    std::fs::create_dir_all(home)?;
-    let file = home.join(".credentials.yaml");
-    replace_file(&file, serde_yaml::to_string(&root)?.as_bytes())?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o600))?;
-    }
-    Ok(())
+    Ok(serde_yaml::to_string(&root)?.into_bytes())
 }
 
 fn valid_ref(name: &str) -> bool {
@@ -93,6 +98,12 @@ pub fn set_deepseek_settings(
     base_url: Option<&str>,
     model: Option<&str>,
 ) -> Result<()> {
+    let bytes = settings_document(home, base_url, model)?;
+    std::fs::create_dir_all(home)?;
+    replace_file(&home.join("settings.yaml"), &bytes)
+}
+
+fn settings_document(home: &Path, base_url: Option<&str>, model: Option<&str>) -> Result<Vec<u8>> {
     let path = home.join("settings.yaml");
     let mut root = if path.exists() {
         serde_yaml::from_slice::<Value>(&std::fs::read(&path)?)?
@@ -103,9 +114,15 @@ pub fn set_deepseek_settings(
         Mapping::new()
     };
     if let Some(url) = base_url.filter(|v| !v.trim().is_empty()) {
-        let parsed = url::Url::parse(url)?;
-        if parsed.scheme() != "https" && parsed.scheme() != "http" {
-            bail!("API 端点须为 HTTP(S) URL");
+        let parsed = url::Url::parse(url).map_err(|_| anyhow!("API 端点不是有效 URL"))?;
+        if !matches!(parsed.scheme(), "https" | "http")
+            || parsed.host().is_none()
+            || !parsed.username().is_empty()
+            || parsed.password().is_some()
+            || parsed.query().is_some()
+            || parsed.fragment().is_some()
+        {
+            bail!("API 端点须为无凭据、查询和片段的 HTTP(S) URL");
         }
         let key = Value::String("llm-deepseek".into());
         let section = root
@@ -117,6 +134,9 @@ pub fn set_deepseek_settings(
             .insert(Value::String("baseURL".into()), Value::String(url.into()));
     }
     if let Some(model) = model.filter(|v| !v.trim().is_empty()) {
+        if model.len() > 256 || model.chars().any(char::is_control) {
+            bail!("默认模型名称无效");
+        }
         let key = Value::String("agent-default-model".into());
         let section = root
             .entry(key)
@@ -130,8 +150,90 @@ pub fn set_deepseek_settings(
         );
         map.insert(Value::String("model".into()), Value::String(model.into()));
     }
+    Ok(serde_yaml::to_string(&root)?.into_bytes())
+}
+
+pub fn save_deepseek_api(
+    home: &Path,
+    key: Option<&str>,
+    base_url: Option<&str>,
+    model: Option<&str>,
+) -> Result<()> {
+    let settings = if base_url.is_some() || model.is_some() {
+        Some(settings_document(home, base_url, model)?)
+    } else {
+        None
+    };
+    let credentials = key
+        .map(|value| key_document(home, "DEEPSEEK_API_KEY", Some(value)))
+        .transpose()?;
+    if settings.is_none() && credentials.is_none() {
+        return Ok(());
+    }
+    let settings_path = home.join("settings.yaml");
+    let credentials_path = home.join(".credentials.yaml");
+    let previous_settings = settings
+        .as_ref()
+        .map(|_| read_optional(&settings_path))
+        .transpose()?;
+    let previous_credentials = credentials
+        .as_ref()
+        .map(|_| read_optional(&credentials_path))
+        .transpose()?;
     std::fs::create_dir_all(home)?;
-    replace_file(&path, serde_yaml::to_string(&root)?.as_bytes())
+    if let Some(bytes) = &settings {
+        replace_file(&settings_path, bytes)?;
+    }
+    if let Some(bytes) = &credentials {
+        let write = (|| -> Result<()> {
+            replace_file(&credentials_path, bytes)?;
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                std::fs::set_permissions(
+                    &credentials_path,
+                    std::fs::Permissions::from_mode(0o600),
+                )?;
+            }
+            Ok(())
+        })();
+        if let Err(problem) = write {
+            let mut rollback_errors = Vec::new();
+            if let Some(previous) = previous_credentials
+                && let Err(error) = restore_file(&credentials_path, previous)
+            {
+                rollback_errors.push(error.to_string());
+            }
+            if let Some(previous) = previous_settings
+                && let Err(error) = restore_file(&settings_path, previous)
+            {
+                rollback_errors.push(error.to_string());
+            }
+            if !rollback_errors.is_empty() {
+                bail!(
+                    "API 设置保存失败（{problem:#}），恢复旧设置也失败（{}）",
+                    rollback_errors.join("；")
+                );
+            }
+            return Err(problem);
+        }
+    }
+    Ok(())
+}
+
+fn read_optional(path: &Path) -> Result<Option<Vec<u8>>> {
+    match std::fs::read(path) {
+        Ok(bytes) => Ok(Some(bytes)),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(error.into()),
+    }
+}
+
+fn restore_file(path: &Path, previous: Option<Vec<u8>>) -> Result<()> {
+    match previous {
+        Some(bytes) => replace_file(path, &bytes),
+        None => std::fs::remove_file(path).map_err(Into::into),
+    }
 }
 
 #[cfg(test)]
@@ -155,5 +257,83 @@ mod tests {
         );
         assert!(!text.contains("secret-12345"));
         assert!(!text.contains("abc123"));
+    }
+
+    #[test]
+    fn invalid_endpoint_does_not_write_key_or_settings() {
+        let home = tempfile::tempdir().unwrap();
+        set_key(home.path(), "DEEPSEEK_API_KEY", Some("old-secret")).unwrap();
+        std::fs::write(
+            home.path().join("settings.yaml"),
+            "custom:\n  enabled: true\n",
+        )
+        .unwrap();
+        let before = std::fs::read(home.path().join(".credentials.yaml")).unwrap();
+        assert!(
+            save_deepseek_api(
+                home.path(),
+                Some("new-secret"),
+                Some("https://user:pass@example.com/?token=secret"),
+                Some("deepseek-flash")
+            )
+            .is_err()
+        );
+        assert_eq!(
+            std::fs::read(home.path().join(".credentials.yaml")).unwrap(),
+            before
+        );
+        assert_eq!(
+            std::fs::read_to_string(home.path().join("settings.yaml")).unwrap(),
+            "custom:\n  enabled: true\n"
+        );
+    }
+
+    #[test]
+    fn saves_verified_fields_and_preserves_unknown_settings() {
+        let home = tempfile::tempdir().unwrap();
+        std::fs::write(
+            home.path().join("settings.yaml"),
+            "custom:\n  enabled: true\n",
+        )
+        .unwrap();
+        save_deepseek_api(
+            home.path(),
+            Some("test-secret"),
+            Some("https://api.deepseek.com/anthropic"),
+            Some("deepseek-flash"),
+        )
+        .unwrap();
+        assert!(is_configured(home.path(), "DEEPSEEK_API_KEY").unwrap());
+        let settings = std::fs::read_to_string(home.path().join("settings.yaml")).unwrap();
+        assert!(settings.contains("custom:"));
+        assert!(settings.contains("deepseek-official"));
+        assert!(settings.contains("baseURL: https://api.deepseek.com/anthropic"));
+        set_key(home.path(), "DEEPSEEK_API_KEY", None).unwrap();
+        assert!(!is_configured(home.path(), "DEEPSEEK_API_KEY").unwrap());
+    }
+
+    #[test]
+    fn malformed_settings_leave_existing_key_untouched() {
+        let home = tempfile::tempdir().unwrap();
+        set_key(home.path(), "DEEPSEEK_API_KEY", Some("old-secret")).unwrap();
+        std::fs::write(home.path().join("settings.yaml"), "broken: [\n").unwrap();
+        let before = std::fs::read(home.path().join(".credentials.yaml")).unwrap();
+        assert!(
+            save_deepseek_api(
+                home.path(),
+                Some("replacement-secret"),
+                Some("https://api.deepseek.com/anthropic"),
+                None,
+            )
+            .is_err()
+        );
+        assert_eq!(
+            std::fs::read(home.path().join(".credentials.yaml")).unwrap(),
+            before
+        );
+        assert_eq!(
+            std::fs::read_to_string(home.path().join("settings.yaml")).unwrap(),
+            "broken: [\n"
+        );
     }
 }
