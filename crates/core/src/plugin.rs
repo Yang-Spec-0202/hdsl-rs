@@ -4,11 +4,15 @@ use crate::paths::AppPaths;
 use crate::registry::{PackageManifest, Registry};
 use crate::runtime::NodeRuntime;
 use anyhow::{Context, Result, bail};
+use base64::Engine;
+use flate2::read::GzDecoder;
 use node_semver::{Range, Version};
 use regex::Regex;
 use serde::Deserialize;
+use sha2::{Digest, Sha512};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
+use std::io::Read;
 use std::path::Path;
 use std::process::Command;
 
@@ -350,6 +354,7 @@ where
     if !compatible(&manifest, repo, &instance.version, &core)? {
         bail!("该插件版本没有当前 Harness 的兼容证据");
     }
+    verify_plugin_tarball(registry, &manifest)?;
     let profile = instance.home(paths)?.join("profiles/web");
     let transaction = ProfileTransaction::begin(&profile)?;
     let outcome = install_candidate(
@@ -373,6 +378,100 @@ where
             Err(problem)
         }
     }
+}
+
+fn verify_plugin_tarball(registry: &Registry, manifest: &PackageManifest) -> Result<()> {
+    let dist = manifest.dist.as_ref().context("npm 包缺少 dist 声明")?;
+    let source = dist.tarball.as_deref().context("npm 包缺少 tarball URL")?;
+    let url = url::Url::parse(source)?;
+    if url.scheme() != "https"
+        || url.host_str() != Some("registry.npmjs.org")
+        || url.port().is_some()
+        || !url.username().is_empty()
+        || url.password().is_some()
+        || url.query().is_some()
+        || url.fragment().is_some()
+    {
+        bail!("插件 tarball URL 不是预期的 npm registry HTTPS 地址");
+    }
+    let integrity = dist.integrity.as_deref().context("npm 包缺少 integrity")?;
+    let encoded = integrity
+        .strip_prefix("sha512-")
+        .context("插件仅接受 SHA512 integrity")?;
+    let expected = base64::engine::general_purpose::STANDARD.decode(encoded)?;
+    if expected.len() != 64 {
+        bail!("插件 SHA512 长度不正确");
+    }
+    let response = registry.client().get(url).send()?.error_for_status()?;
+    if response.url().host_str() != Some("registry.npmjs.org") {
+        bail!("插件下载被重定向到未知来源");
+    }
+    let mut archive_bytes = Vec::new();
+    response
+        .take(25 * 1024 * 1024 + 1)
+        .read_to_end(&mut archive_bytes)?;
+    if archive_bytes.len() > 25 * 1024 * 1024 {
+        bail!("插件安装包超过 25 MiB 上限");
+    }
+    if Sha512::digest(&archive_bytes).as_slice() != expected {
+        bail!("插件 tarball SHA512 不匹配");
+    }
+    verify_bundle_entries(&archive_bytes, manifest)
+}
+
+fn verify_bundle_entries(bytes: &[u8], manifest: &PackageManifest) -> Result<()> {
+    let patch = manifest
+        .dsh
+        .pointer("/bundle/patch")
+        .and_then(|v| v.as_str())
+        .context("插件没有 dsh.bundle.patch")?
+        .trim_start_matches("./");
+    let path = Path::new(patch);
+    if path.as_os_str().is_empty()
+        || patch.contains('\\')
+        || path
+            .components()
+            .any(|part| !matches!(part, std::path::Component::Normal(_)))
+    {
+        bail!("插件 patch 路径不安全");
+    }
+    let patch_file = format!("package/{patch}");
+    let mut found_patch = false;
+    let mut found_manifest = false;
+    let decoder = GzDecoder::new(bytes);
+    let mut archive = tar::Archive::new(decoder);
+    for item in archive.entries()? {
+        let item = item?;
+        let item_path = item.path()?.to_string_lossy().replace('\\', "/");
+        if item_path == patch_file {
+            if !item.header().entry_type().is_file() {
+                bail!("插件 patch 不是普通文件");
+            }
+            found_patch = true;
+        }
+        if item_path == "package/package.json" {
+            if !item.header().entry_type().is_file() {
+                bail!("插件 package.json 不是普通文件");
+            }
+            let mut content = Vec::new();
+            item.take(1024 * 1024 + 1).read_to_end(&mut content)?;
+            if content.len() > 1024 * 1024 {
+                bail!("插件 package.json 过大");
+            }
+            let bundled: serde_json::Value = serde_json::from_slice(&content)?;
+            if bundled.get("name").and_then(|v| v.as_str()) != Some(&manifest.name)
+                || bundled.get("version").and_then(|v| v.as_str()) != Some(&manifest.version)
+                || bundled.pointer("/dsh/bundle/patch") != manifest.dsh.pointer("/bundle/patch")
+            {
+                bail!("插件包内声明与 npm 元数据不一致");
+            }
+            found_manifest = true;
+        }
+    }
+    if !found_manifest || !found_patch {
+        bail!("插件包缺少 package.json 或 bundle patch");
+    }
+    Ok(())
 }
 
 fn install_candidate<F>(
@@ -719,5 +818,42 @@ mod tests {
             Some("0.1.5-rc.3")
         );
         assert!(!versions.contains_key("@deepseek-ai/dsh-tools"));
+    }
+
+    #[test]
+    fn verifies_bundle_patch_inside_tarball() {
+        use flate2::{Compression, write::GzEncoder};
+        let manifest = PackageManifest {
+            name: "plugin-example".into(),
+            version: "1.0.0".into(),
+            bin: serde_json::Value::Null,
+            dependencies: BTreeMap::new(),
+            peer_dependencies: BTreeMap::new(),
+            engines: BTreeMap::new(),
+            scripts: BTreeMap::new(),
+            dsh: serde_json::json!({"bundle":{"patch":"./cordis.patch.yml"}}),
+            repository: serde_json::Value::Null,
+            dist: None,
+        };
+        let bundle = serde_json::json!({"name":"plugin-example","version":"1.0.0",
+            "dsh":{"bundle":{"patch":"./cordis.patch.yml"}}})
+        .to_string();
+        let gzip = GzEncoder::new(Vec::new(), Compression::default());
+        let mut archive = tar::Builder::new(gzip);
+        for (name, data) in [
+            ("package/package.json", bundle.as_bytes()),
+            ("package/cordis.patch.yml", b"- id: plugin\n".as_slice()),
+        ] {
+            let mut header = tar::Header::new_gnu();
+            header.set_size(data.len() as u64);
+            header.set_mode(0o644);
+            header.set_cksum();
+            archive.append_data(&mut header, name, data).unwrap();
+        }
+        let bytes = archive.into_inner().unwrap().finish().unwrap();
+        verify_bundle_entries(&bytes, &manifest).unwrap();
+        let mut bad = manifest.clone();
+        bad.dsh = serde_json::json!({"bundle":{"patch":"../missing.yml"}});
+        assert!(verify_bundle_entries(&bytes, &bad).is_err());
     }
 }
