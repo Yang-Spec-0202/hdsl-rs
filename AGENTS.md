@@ -31,7 +31,7 @@
 
 ## 文档结构
 
-- 两本简体中文优先的 mdBook：`docs/developer`（架构、数据格式、上游接口、兼容规则、构建与测试）与 `docs/user`（安装、实例、插件、API、排障）。
+- 两本简体中文优先的 mdBook：`docs/developer`（架构、数据格式、上游接口、兼容规则、构建与测试）与 `docs/user`（安装、实例、插件、设置、排障）。
 - 两本 `book.toml` 均设置 `create-missing = false`，不得让 mdBook 自动创建缺失页面。
 - 每个开发者页面以“状态：计划中/已实现/部分已实现”开头，并随代码更新。
 - 用户手册 HTML 随安装包与便携包提供；应用“帮助”按钮在系统浏览器打开本地副本，离线可用；Markdown 源文件保留在仓库。
@@ -43,7 +43,7 @@
 - 插件操作使用该实例同一版本的 `dsh plugin --profile web`，不得使用系统全局 `dsh`。
 - 不得为 `@deepseek-ai/*` 包写入 pnpm `overrides`；`allowBuilds` 仅在用户逐项批准构建脚本后写入。
 - 网络来源限定为 Node.js 官方发行索引、npm registry、插件目录与 GitHub 元数据；安装前验证 Node 官方 SHA256 与 npm integrity。
-- API 页只编辑已核验的 DeepSeek 官方字段；保存前验证，失败不得部分写入；密钥不得出现在日志或错误中。
+- 不提供写入实例 API Key、端点或模型设置的入口；模型路由与凭据由每个实例的 Harness 本体管理。启动器不得写入或改写实例的 `.credentials.yaml` / `settings.yaml`，且密钥不得出现在日志或错误中。
 - 插件只在具备明确 `@deepseek-ai/*` 依赖证据或人工维护兼容记录时提供安装；证据缺失或冲突时不提供。安装前停止实例并备份 profile，失败时恢复备份。
 
 ## 验证
