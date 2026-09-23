@@ -11,11 +11,12 @@
 
 ## 开发期临时资源
 
-在原创资源就绪前，开发期临时使用 HMCL 的图形资源校对版式：
+仓库在干净检出后必须可构建，因此 `crates/ui/ui/assets/` 中始终存在原创占位图。开发期用 HMCL 参考资源覆盖同名占位图来校对版式：
 
-- `scripts/stage-reference-assets.ps1` 把 `reference/HMCL` 的位图，以及从 `SVG.java` 提取的矢量图标，写入 `crates/ui/ui/assets/_reference/`。
-- 该目录已被 `.gitignore` 忽略，不得提交，也不得进入仓库历史。
-- 原创资源就绪后，按最终文件名放入 `crates/ui/ui/assets/`，再移除对 `_reference` 的引用。
+- `scripts/make-placeholder-assets.ps1` 生成原创占位图（提交内容）。
+- `scripts/stage-reference-assets.ps1` 用 `reference/HMCL` 的位图与从 `SVG.java` 提取的矢量图标覆盖同名占位图，仅供本地开发。
+- 覆盖后的文件是参考资源，**提交前必须还原**：运行 `scripts/make-placeholder-assets.ps1`，或 `git checkout -- crates/ui/ui/assets`。
+- 原创资源就绪后，直接替换 `crates/ui/ui/assets/` 下同名文件并提交。
 
 ## A. 应用标识（branding）
 
