@@ -28,3 +28,16 @@
 ## 安装包内容核验（已实现）
 
 调用 `dsh plugin` 前只接受 npm registry 的 HTTPS tarball URL 和 `sha512-...` integrity，下载上限 25 MiB。下载字节的 SHA512 必须与 registry 声明一致；压缩包内的 `package/package.json` 要与所选包名、精确版本和 `dsh.bundle.patch` 一致，声明的 patch 必须是包内普通文件。路径不得越过包根目录。任一检查失败则不创建候选 profile，也不执行包脚本。
+
+## 首批目录审查记录
+
+2026-09-23 按 npm 完整元数据与 GitHub 仓库地址核对四个候选。它们的发布包都有 `dsh.bundle.patch` 与 SHA512 integrity，但仍须逐版本满足当前实例实际安装的 `@deepseek-ai/*` peer 范围；目录收录本身不等于兼容。
+
+| 仓库 / 包 | 当日 npm latest | 在 Harness `0.1.5-rc.3` 上的结果 |
+| --- | --- | --- |
+| `w2112515/dsh-plugin-marketplace` / `@w2112515/dsh-plugin-marketplace` | `0.2.4` | latest 的 `dsh-app-boot` 等 peer 要求 `^0.1.0-rc.6`；本次筛选无可安装版本。 |
+| `dsh-market/dsh-market` / `dshmarket` | `1.58.0` | 筛选出兼容旧版 `1.11.3`，未将 latest 误荐。 |
+| `omdsh-dev/DSH-better-sidebar` / `dsh-better-sidebar` | `0.19.1` | 无满足实例实际包版本集合的版本；保持不可安装。 |
+| `volcengine/OpenViking` / `@openviking/dsh-memory-plugin` | `0.5.2` | `0.5.2` peer 匹配；在线测试完成包核验、安装、配置检查和卸载。 |
+
+其中 npm 元数据是筛选证据，安装包内容另由 SHA512 和 `dsh.bundle.patch` 检查确认。当前人工精确版本矩阵为空；当 peer 证据不存在时，必须先补充带日期与证据的矩阵记录，不能靠“热门”推断兼容。
