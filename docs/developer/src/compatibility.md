@@ -20,3 +20,7 @@
 首次调用官方 `dsh plugin` 时不批准构建脚本。pnpm 若报告 `ERR_PNPM_IGNORED_BUILDS`，解析其中每个精确包名和版本，从 npm 元数据读取该包 `preinstall`、`install`、`postinstall`、`prepare` 脚本并逐个向用户展示。用户拒绝、脚本缺失或元数据无法核验时立即回滚；用户确认后只将这个精确包版本加入候选 profile 的 `allowBuilds`，再调用官方命令。安装结束前用该实例的 `--dump-config` 检查配置。确认记录仅留在该实例 profile 中，不形成全局信任名单。
 
 验收：现有 profile 的失败恢复要保留原目录内容；空 profile 失败不得留下残余；拒绝脚本时不执行脚本；多个脚本各有独立确认；日志与错误文字不得包含凭据。
+
+## 已安装列表与卸载（计划中）
+
+从当前实例的 `profiles/web/package.json` 读取插件包名，在插件页列出。卸载前停止实例，并沿用安装事务：保留整个旧 profile，候选目录执行官方 `dsh plugin --profile web remove <包名>`，再做配置转储检查。失败时原样恢复。界面必须为卸载提供明确确认，且切换实例后列表立即更新。
