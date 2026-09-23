@@ -12,24 +12,33 @@
 
 ## 开发期临时资源
 
-开发期用 HMCL 参考资源覆盖同名占位图来校对版式：
+开发期可用候选资源覆盖同名占位图来校对版式，候选资源不入库：
 
-- `scripts/make-placeholder-assets.ps1` 生成原创占位图（提交内容）。
-- `scripts/stage-reference-assets.ps1` 用 `reference/HMCL` 的位图与从 `SVG.java` 提取的矢量图标覆盖同名占位图，仅供本地开发。
-- 覆盖后的文件是参考资源，**提交前必须还原**：运行 `scripts/make-placeholder-assets.ps1`，或 `git checkout -- crates/ui/ui/assets`。
+- `scripts/make-placeholder-assets.ps1` 只为缺失文件生成原创占位图（已存在的文件跳过，不覆盖原创资源）。
+- `scripts/stage-candidate-icons.ps1 [-Set reicon|tabler]` 把 `../ui-assets-original` 的第三方候选图标覆盖到 `crates/ui/ui/assets/icons/`，并映射 `controller` → `controller`。
+- `scripts/stage-reference-assets.ps1` 仍可用 HMCL 参考位图与从 `SVG.java` 提取的图标覆盖。
+- 覆盖后是第三方/参考资源，**提交前必须还原**：`git checkout -- crates/ui/ui/assets`。
 - 原创资源就绪后，直接替换 `crates/ui/ui/assets/` 下同名文件并提交。
+
+### 候选资源许可（不入库）
+
+`ui-assets-original/` 位于本仓库之外，含三部分：原创的 Roxy Bot 品牌与壁纸（已并入 `assets/`）；Reicon（MIT，Copyright (c) 2025 REICON）与 Tabler Icons（MIT，Copyright (c) 2020–2026 Paweł Kuna）两套候选图标。按工作区 `AGENTS.md`，发行包与仓库历史的图形资源须原创，候选图标在逐项确认许可并按语义重绘前不得提交；完整声明见 `ui-assets-original/README.md`。
 
 ## A. 应用标识（branding）
 
+已并入原创 Roxy Bot 标识。
+
 | 文件 | 尺寸 | 用途 |
 | --- | --- | --- |
-| `branding/icon.png` | 32×32 | 主标识（关于页、默认实例图标） |
+| `branding/icon.svg` | 矢量（1024 视框） | 主标识（关于页、默认实例图标） |
+| `branding/icon.png` | 32×32 | 主标识位图 |
 | `branding/icon@2x.png` | 64×64 | HiDPI 标识 |
 | `branding/icon@4x.png` | 128×128 | Linux 窗口图标 |
 | `branding/icon@8x.png` | 256×256 | 关于页/主题大图标 |
 | `branding/icon-mac.png` | 512×512 | macOS Dock 图标 |
-| `branding/icon-title.png` | 24×24 | 标题栏图标 |
+| `branding/icon-title.svg` | 矢量 | 标题栏图标 |
 | `branding/icon-title@2x.png` | 48×48 | 标题栏 HiDPI |
+| `branding/roxy-bot-mascot-cutout.png` | 1254×1254 | Roxy Bot 角色立绘（首页/关于页备用） |
 
 现有 `assets/hdsl-mark.svg` 保留备用。
 
@@ -37,9 +46,7 @@
 
 | 文件 | 尺寸 | 用途 |
 | --- | --- | --- |
-| `wallpapers/2021-08-26.jpg` | 1600×900 | 默认背景 |
-| `wallpapers/2016-02-25.jpg` | 800×480 | 备选背景 |
-| `wallpapers/2015-06-22.jpg` | 800×480 | 备选背景 |
+| `wallpapers/roxy-bot-light-gradient.jpg` | 1600×900 | 默认背景 |
 
 ## C. 实例图标集（instances）
 
@@ -79,12 +86,12 @@
 
 ## F. 单色 UI 图标（icons）
 
-图标集与 HMCL `SVG.java` 枚举一一对应，共 100 个，文件名为枚举名小写、下划线转连字符（如 `ADD_CIRCLE` → `add-circle.svg`）。完整清单见 `crates/ui/ui/icons.slint`，由 `scripts/gen-icons.ps1` 生成。分组示例：
+图标集与 HMCL `SVG.java` 枚举一一对应，共 100 个，文件名为枚举名小写、下划线转连字符（如 `ADD_CIRCLE` → `add-circle.svg`）。完整清单见 `crates/ui/ui/icons.slint`，由 `scripts/gen-icons.ps1` 生成。仓库内提交的是原创占位图；开发期用 `scripts/stage-candidate-icons.ps1` 覆盖为候选图标校对。分组示例：
 
 | 分组 | 文件名示例 |
 | --- | --- |
 | 窗口与导航 | `arrow-back` `home` `refresh` `close` `minimize-center` `help` `help-fill` |
-| 侧边导航 | `list-bulleted` `download` `settings` `settings-fill` `graph2` `chat` `add-circle` `folder` `folder-fill` `stadia-controller` `package2` `extension` `texture` `wb-sunny` `public` `deployed-code` `schema` `local-cafe` `tune` `style` `feedback` `info` |
+| 侧边导航 | `list-bulleted` `download` `settings` `settings-fill` `graph2` `chat` `add-circle` `folder` `folder-fill` `controller` `package2` `extension` `texture` `wb-sunny` `public` `deployed-code` `schema` `local-cafe` `tune` `style` `feedback` `info` |
 | 首页与列表 | `arrow-drop-up` `update` `rocket-launch` `more-vert` `more-horiz` `menu` |
 | 列表与操作 | `add` `edit` `delete` `delete-forever` `folder-open` `folder-copy` `output` `script` `search` `unfold-more` `arrow-forward` `check` `cancel` `select-all` `restore` `globe-book` `alpha-circle` `beta-circle` `release-circle` `visibility` `visibility-off` `archive` `keyboard-arrow-down` `keyboard-arrow-up` `content-copy` `warning` `error` `person` `host` `explore` `fort` `location-city` `screenshot-monitor` `frame-bug` |
 
