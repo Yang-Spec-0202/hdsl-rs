@@ -30,6 +30,26 @@
 - 页面接口保持 `form-name`、`form-version`、`form-workspace`、`available-versions`、`available-version-count` 与 `refresh-versions`、`create-instance` 回调不变。
 - 验收：版本列表可滚动、可筛选、可选中；预览版有明确标记；创建实例走既有回调。
 
+## 实例详情（`pages/instance-detail.slint`，对应 HMCL `GameInstancePage`）
+
+- 左侧标签栏宽 200，标签为「实例设置」「版本组件」「插件管理」，使用 `AdvancedListItem` 与图标；底部工具条含「测试游戏」「浏览」「管理」。
+- 内容区随标签切换：实例设置 = 设置行列表（对应 HMCL 游戏设置）；版本组件 = 版本与组件列表；插件管理 = 插件列表。
+- 页面接口：`in-out int page`、`in string instance-name`、`in string instance-version`、`in string instance-port`；数据由外壳从当前实例注入，首版标签内容用本地演示数据，持久化接线留待后续。
+- 验收：三标签切换正常；左侧标签与底部工具条版式与 HMCL 一致；空实例时有占位提示。
+
+## 设置（`pages/settings.slint`，对应 HMCL `LauncherSettingsPage`）
+
+- 左侧标签栏宽 200，按需求调整命名：`全局设置`（原「全局游戏设置」）、`环境管理`（原「Java 管理」）；分类「启动器」下为 `通用`、`外观`、`下载`（三者命名不变）；分类「帮助」下为 `帮助`、`反馈`、`关于`。
+- 每个标签用 `ComponentList` + `LineComponent` 家族（`LineButton`/`LineSelectButton`/`LineToggleButton`/`LinePane`/`LineTextPane`）实现 HMCL 对应设置行。
+- 首版只做界面与本地状态；设置项的持久化由后续切片接入。外观页的模型路由与凭据相关入口不提供（见 [架构与上游边界](architecture.md)）。
+- 验收：八个标签齐全且命名正确；设置行版式（标题 14、副标题 11、行高 48/64、内边距 10/16）与 HMCL 一致；开关、下拉、输入框可用。
+
+## 日志与对话框（`pages/log.slint`、`components/dialog.slint`）
+
+- 日志窗口对应 HMCL `LogWindow`：深色背景、等宽字体、按级别（trace/debug/info/warn/error/fatal）着色，顶部工具条含级别过滤与「始终置顶」开关。
+- 对话框对应 HMCL `JFXDialogPane`：圆角 4、内边距 24/16、标题 20 粗体、操作按钮右对齐；补充底部 `SnackBar`（背景 `inverse-surface`，文字 `inverse-on-surface`，动作 `inverse-primary`）。
+- 验收：日志行按级别正确着色；对话框与提示条的圆角、间距、配色与 HMCL 一致。
+
 ## 待实现切片
 
-实例详情（对应 `GameInstancePage`，标签「实例设置/版本组件/插件管理」）、设置（对应 `LauncherSettingsPage`，标签「全局设置/环境管理/通用/外观/下载/帮助/反馈/关于」）、对话框与日志窗口的度量在各自切片开始前补入本页。
+实例设置与设置的持久化接线、插件市场与下载列表的数据接线、主题与背景切换的实际生效，留待后续切片。
