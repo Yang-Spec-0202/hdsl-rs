@@ -4,6 +4,8 @@
 
 工作区分为 `core`、`ui` 与 `app`：`core` 处理磁盘状态、下载、进程、npm 元数据、插件兼容和日志脱敏；`ui` 只定义 Slint 页面与事件；`app` 将事件接到异步服务。核心逻辑不依赖 Slint，以便在无图形环境测试。
 
+界面按 HMCL 复刻，分为三层：`ui/theme.slint` 提供设计令牌（颜色、字号、圆角、间距、动效）；`ui/components/` 提供可复用组件（`common`、`navigation`、`lines`、`lists`、`dialog`、`tabs`）；`ui/pages/` 提供页面（首页、安装、实例列表、插件市场、设置、日志）。`ui/app.slint` 只负责无边框窗口外壳、页面路由与状态，通过属性与回调连接 `app`。`ui/icons.slint` 与 `ui/assets/` 下的占位图由脚本生成，详见 [UI 复刻计划：对齐 HMCL](ui-parity.md) 与 [UI 图形资源清单](ui-assets.md)。
+
 启动器只管理 Harness，不修改 Harness 源码。安装版本以 npm `@deepseek-ai/dsh@<精确版本>` 为准。启动时使用该安装的 `bin` 入口、实例工作目录及实例专属 `DSH_HOME`。插件操作使用同一版本的 `dsh plugin --profile web`，不得使用系统全局的 `dsh`。
 
 网络来源限定为 Node.js 官方发行索引、npm registry、插件目录和 GitHub 元数据。安装前验证 Node 官方 SHA256 与 npm 包的 integrity。Node 下载使用临时目录；Harness 直接安装在最终实例目录，因为 Windows 上 pnpm 链接不能随目录移动。成功验证后才写入 `instance.json`，因此失败安装不会出现在实例列表。

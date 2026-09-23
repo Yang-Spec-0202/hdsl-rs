@@ -1,0 +1,56 @@
+// Modal dialog mirroring HMCL JFXDialogPane / JFXDialogLayout.
+import { Theme } from "../theme.slint";
+import { BorderButton, RaisedButton } from "common.slint";
+
+export component DialogPane inherits Rectangle {
+    in property <string> title;
+    in property <string> message: "";
+    in property <string> accept-label: "确定";
+    in property <string> reject-label: "取消";
+    in property <bool> show-accept: true;
+    in property <bool> show-reject: true;
+    callback accepted();
+    callback rejected();
+
+    background: #990e1c34;
+
+    Rectangle {
+        width: 420px;
+        height: body.preferred-height + Theme.space-24 + Theme.space-16 + 60px;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        background: Theme.surface-container-high;
+        border-radius: Theme.radius-4;
+        drop-shadow-color: #00000040;
+        drop-shadow-blur: 12px;
+
+        body := VerticalLayout {
+            padding-left: Theme.space-24;
+            padding-right: Theme.space-24;
+            padding-top: Theme.space-24;
+            padding-bottom: Theme.space-16;
+            spacing: Theme.space-12;
+            Text {
+                text: root.title;
+                color: Theme.on-surface;
+                font-size: Theme.font-size-20;
+                font-weight: 700;
+                horizontal-alignment: left;
+            }
+            if root.message != "": Text {
+                text: root.message;
+                color: Theme.on-surface;
+                font-size: Theme.font-size-14;
+                wrap: word-wrap;
+                horizontal-alignment: left;
+            }
+            @children
+            HorizontalLayout {
+                spacing: Theme.space-10;
+                alignment: right;
+                if root.show-reject: BorderButton { label: root.reject-label; clicked => { root.rejected(); } }
+                if root.show-accept: RaisedButton { label: root.accept-label; clicked => { root.accepted(); } }
+            }
+        }
+    }
+}

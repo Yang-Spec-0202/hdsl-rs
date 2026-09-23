@@ -1,0 +1,68 @@
+﻿// Home page. HMCL counterpart: ui/main/MainPage.
+import { Theme } from "../theme.slint";
+import { PageTitle, ActionButton } from "../components/common.slint";
+
+export component HomePage inherits Rectangle {
+    in-out property <int> page;
+    in property <string> active-instance-name;
+    in property <string> active-instance-version;
+    in property <string> active-instance-port;
+    callback launch-instance();
+    callback stop-instance();
+    callback open-upstream-report();
+
+    background: transparent;
+
+    VerticalLayout {
+        padding: Theme.space-24;
+        spacing: Theme.space-16;
+        PageTitle { label: "开始使用"; }
+        Rectangle {
+            height: 180px;
+            border-radius: Theme.radius-4;
+            background: Theme.primary-fixed;
+            VerticalLayout {
+                padding: Theme.space-24;
+                spacing: Theme.space-10;
+                Text { text: "让不同版本，住在各自的海域。"; font-size: Theme.font-size-22; font-weight: 700; color: Theme.on-primary-fixed; }
+                Text { text: "为每个 DeepSeek Harness 实例保存独立版本、插件和数据。"; font-size: Theme.font-size-14; color: Theme.on-primary-fixed-variant; }
+                Rectangle { vertical-stretch: 1; background: transparent; }
+                HorizontalLayout {
+                    spacing: Theme.space-12;
+                    ActionButton { width: 150px; label: "安装新版本"; primary: true; clicked => { root.page = 1; } }
+                    ActionButton { width: 150px; label: "查看实例"; clicked => { root.page = 2; } }
+                    Rectangle { horizontal-stretch: 1; background: transparent; }
+                }
+            }
+        }
+        Rectangle {
+            height: 130px;
+            background: Theme.surface-container-lowest;
+            border-radius: Theme.radius-4;
+            VerticalLayout {
+                padding: Theme.space-16;
+                spacing: Theme.space-8;
+                Text { text: "当前实例"; font-size: Theme.font-size-16; font-weight: 700; color: Theme.on-surface; }
+                Text { text: root.active-instance-name + "  " + root.active-instance-version; color: Theme.on-surface-variant; font-size: Theme.font-size-14; }
+                Text { text: "Web 端口：" + root.active-instance-port; color: Theme.on-surface-variant; font-size: Theme.font-size-13; }
+                HorizontalLayout { spacing: Theme.space-10;
+                    ActionButton { width: 110px; label: "启动"; primary: true; clicked => { root.launch-instance(); } }
+                    ActionButton { width: 110px; label: "停止"; clicked => { root.stop-instance(); } }
+                    Rectangle { horizontal-stretch: 1; background: transparent; }
+                }
+            }
+        }
+        Rectangle {
+            height: 100px;
+            background: Theme.tertiary-fixed;
+            border-radius: Theme.radius-4;
+            VerticalLayout { padding: Theme.space-12; spacing: Theme.space-5;
+                Text { text: "上游版本公告 · 2026-09-23"; font-size: Theme.font-size-15; font-weight: 700; color: Theme.on-tertiary-fixed; }
+                Text { text: "社区报告：0.1.5-rc.2 在 Windows 的 Web 启动可能失败；本地已复现 HMR 错误。";
+                    font-size: Theme.font-size-12; color: Theme.on-tertiary-fixed; wrap: word-wrap; }
+                ActionButton { width: 125px; height: 29px; label: "查看原始报告"; clicked => { root.open-upstream-report(); } }
+            }
+        }
+        Rectangle { vertical-stretch: 1; background: transparent; }
+    }
+}

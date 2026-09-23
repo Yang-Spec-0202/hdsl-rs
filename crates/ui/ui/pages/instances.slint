@@ -1,0 +1,45 @@
+﻿// Instance list page. HMCL counterpart: ui/instances/GameListPage.
+import { ScrollView } from "std-widgets.slint";
+import { Theme } from "../theme.slint";
+import { PageTitle, ActionButton } from "../components/common.slint";
+import { InstanceRow } from "../models.slint";
+
+export component InstancesPage inherits Rectangle {
+    in-out property <int> page;
+    in property <[InstanceRow]> instances;
+    in-out property <string> selected-id;
+    in-out property <string> pending-delete-id;
+    callback select-instance(string);
+    callback launch-instance();
+    callback clone-instance(string);
+
+    background: transparent;
+
+    VerticalLayout {
+        padding: Theme.space-24;
+        spacing: Theme.space-12;
+        PageTitle { label: "实例管理"; }
+        Text { text: "选择实例后可启动、复制到新版本或删除。"; color: Theme.on-surface-variant; font-size: Theme.font-size-13; }
+        ScrollView {
+            vertical-stretch: 1;
+            VerticalLayout {
+                spacing: Theme.space-8;
+                for row in root.instances: Rectangle {
+                    height: 96px; background: root.selected-id == row.id ? Theme.secondary-container : Theme.surface-container-lowest;
+                    border-radius: Theme.radius-4;
+                    VerticalLayout { padding: Theme.space-12; spacing: Theme.space-5;
+                        Text { text: row.name + "  ·  " + row.version; font-size: Theme.font-size-16; font-weight: 700; color: Theme.on-surface; }
+                        Text { text: row.workspace; font-size: Theme.font-size-12; color: Theme.on-surface-variant; }
+                        HorizontalLayout { spacing: Theme.space-8;
+                            ActionButton { width: 82px; label: "选择"; clicked => { root.selected-id = row.id; root.select-instance(row.id); } }
+                            ActionButton { width: 82px; label: "启动"; clicked => { root.selected-id = row.id; root.select-instance(row.id); root.launch-instance(); } }
+                            ActionButton { width: 100px; label: "复制版本"; clicked => { root.clone-instance(row.id); } }
+                            ActionButton { width: 82px; label: "删除"; clicked => { root.pending-delete-id = row.id; } }
+                            Rectangle { horizontal-stretch: 1; background: transparent; }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

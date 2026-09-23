@@ -2,69 +2,16 @@ import { LineEdit, ScrollView } from "std-widgets.slint";
 import { Theme } from "theme.slint";
 import { Icon } from "icons.slint";
 import { AdvancedListItem, AdvancedListBox } from "components/navigation.slint";
-import { ClassTitle } from "components/common.slint";
+import { ClassTitle, ActionButton } from "components/common.slint";
+import { InstanceRow, PluginRow, VersionRow } from "models.slint";
+import { HomePage } from "pages/home.slint";
+import { InstallPage } from "pages/install.slint";
+import { InstancesPage } from "pages/instances.slint";
+import { PluginsPage } from "pages/plugins.slint";
+import { SettingsPage } from "pages/settings.slint";
+import { LogPage } from "pages/log.slint";
 
-export struct InstanceRow {
-    id: string,
-    name: string,
-    version: string,
-    workspace: string,
-    port: string,
-}
-
-export struct PluginRow {
-    name: string,
-    package: string,
-    version: string,
-    summary: string,
-    repo: string,
-}
-
-export struct VersionRow {
-    version: string,
-    label: string,
-}
-
-component PageTitle inherits Text {
-    in property <string> label;
-    text: label;
-    color: Theme.on-surface;
-    font-size: Theme.font-size-22;
-    font-weight: 700;
-    height: 38px;
-    vertical-alignment: center;
-}
-
-component ActionButton inherits Rectangle {
-    in property <string> label;
-    in property <bool> primary: false;
-    in property <bool> enabled: true;
-    callback clicked();
-    height: 34px;
-    border-radius: Theme.radius-4;
-    border-width: primary ? 0px : 1px;
-    border-color: Theme.outline;
-    background: primary ? Theme.primary : transparent;
-    opacity: enabled ? 1 : 0.4;
-    Text {
-        text: root.label;
-        color: primary ? Theme.on-primary : Theme.primary;
-        font-size: Theme.font-size-14;
-        horizontal-alignment: center;
-        vertical-alignment: center;
-    }
-    ta := TouchArea {
-        enabled: root.enabled;
-        clicked => { root.clicked(); }
-    }
-    Rectangle {
-        width: parent.width;
-        height: parent.height;
-        border-radius: parent.border-radius;
-        background: ta.pressed ? Theme.on-surface.with-alpha(0.12) : (ta.has-hover ? Theme.on-surface.with-alpha(0.04) : transparent);
-        animate background { duration: Theme.motion-short4; }
-    }
-}
+export { InstanceRow, PluginRow, VersionRow }
 
 // Title bar button, mirrors HMCL .jfx-decorator-button (40x40, icon 24).
 component ShellButton inherits Rectangle {
@@ -165,7 +112,6 @@ export component AppWindow inherits Window {
                     icon: "home";
                     clicked => { root.page = 0; }
                 }
-                // Title node: icon + full title
                 HorizontalLayout {
                     x: root.page == 0 ? Theme.space-12 : Theme.titlebar-height * 2 + Theme.space-4;
                     y: 0;
@@ -185,7 +131,6 @@ export component AppWindow inherits Window {
                         vertical-alignment: center;
                     }
                 }
-                // Window buttons
                 HorizontalLayout {
                     x: parent.width - Theme.titlebar-height * 3;
                     y: 0;
@@ -255,7 +200,6 @@ export component AppWindow inherits Window {
                             clicked => { root.open-help(); }
                         }
                     }
-                    // Version footer
                     Text {
                         x: Theme.space-16;
                         y: parent.height - 28px;
@@ -268,194 +212,59 @@ export component AppWindow inherits Window {
                 Rectangle {
                     background: Theme.surface-transparent-50;
 
-                    // --- Page: 首页 ---
-                    if root.page == 0: VerticalLayout {
-                        padding: Theme.space-24;
-                        spacing: Theme.space-16;
-                        PageTitle { label: "开始使用"; }
-                        Rectangle {
-                            height: 180px;
-                            border-radius: Theme.radius-4;
-                            background: Theme.primary-fixed;
-                            VerticalLayout {
-                                padding: Theme.space-24;
-                                spacing: Theme.space-10;
-                                Text { text: "让不同版本，住在各自的海域。"; font-size: Theme.font-size-22; font-weight: 700; color: Theme.on-primary-fixed; }
-                                Text { text: "为每个 DeepSeek Harness 实例保存独立版本、插件和数据。"; font-size: Theme.font-size-14; color: Theme.on-primary-fixed-variant; }
-                                Rectangle { vertical-stretch: 1; background: transparent; }
-                                HorizontalLayout {
-                                    spacing: Theme.space-12;
-                                    ActionButton { width: 150px; label: "安装新版本"; primary: true; clicked => { root.page = 1; root.refresh-versions(); } }
-                                    ActionButton { width: 150px; label: "查看实例"; clicked => { root.page = 2; } }
-                                    Rectangle { horizontal-stretch: 1; background: transparent; }
-                                }
-                            }
-                        }
-                        Rectangle {
-                            height: 130px;
-                            background: Theme.surface-container-lowest;
-                            border-radius: Theme.radius-4;
-                            VerticalLayout {
-                                padding: Theme.space-16;
-                                spacing: Theme.space-8;
-                                Text { text: "当前实例"; font-size: Theme.font-size-16; font-weight: 700; color: Theme.on-surface; }
-                                Text { text: root.active-instance-name + "  " + root.active-instance-version; color: Theme.on-surface-variant; font-size: Theme.font-size-14; }
-                                Text { text: "Web 端口：" + root.active-instance-port; color: Theme.on-surface-variant; font-size: Theme.font-size-13; }
-                                HorizontalLayout { spacing: Theme.space-10;
-                                    ActionButton { width: 110px; label: "启动"; primary: true; clicked => { root.launch-instance(); } }
-                                    ActionButton { width: 110px; label: "停止"; clicked => { root.stop-instance(); } }
-                                    Rectangle { horizontal-stretch: 1; background: transparent; }
-                                }
-                            }
-                        }
-                        Rectangle {
-                            height: 100px;
-                            background: Theme.tertiary-fixed;
-                            border-radius: Theme.radius-4;
-                            VerticalLayout { padding: Theme.space-12; spacing: Theme.space-5;
-                                Text { text: "上游版本公告 · 2026-09-23"; font-size: Theme.font-size-15; font-weight: 700; color: Theme.on-tertiary-fixed; }
-                                Text { text: "社区报告：0.1.5-rc.2 在 Windows 的 Web 启动可能失败；本地已复现 HMR 错误。";
-                                    font-size: Theme.font-size-12; color: Theme.on-tertiary-fixed; wrap: word-wrap; }
-                                ActionButton { width: 125px; height: 29px; label: "查看原始报告"; clicked => { root.open-upstream-report(); } }
-                            }
-                        }
-                        Rectangle { vertical-stretch: 1; background: transparent; }
+                    if root.page == 0: HomePage {
+                        width: parent.width;
+                        height: parent.height;
+                        page <=> root.page;
+                        active-instance-name: root.active-instance-name;
+                        active-instance-version: root.active-instance-version;
+                        active-instance-port: root.active-instance-port;
+                        launch-instance => { root.launch-instance(); }
+                        stop-instance => { root.stop-instance(); }
+                        open-upstream-report => { root.open-upstream-report(); }
                     }
-
-                    // --- Page: 安装新版本 ---
-                    if root.page == 1: VerticalLayout {
-                        padding: Theme.space-24;
-                        spacing: Theme.space-8;
-                        PageTitle { label: "安装新版本"; }
-                        Text { text: "填写实例信息。下载会校验 Node.js 与 Harness 安装包。"; color: Theme.on-surface-variant; font-size: Theme.font-size-13; }
-                        Text { text: "实例名称"; color: Theme.on-surface-variant; }
-                        name-input := LineEdit { placeholder-text: "例如：日常开发"; text <=> root.form-name; }
-                        Text { text: "Harness 版本"; color: Theme.on-surface-variant; }
-                        HorizontalLayout { spacing: Theme.space-10;
-                            version-input := LineEdit { text <=> root.form-version; placeholder-text: "例如 0.1.7-alpha.2"; horizontal-stretch: 1; }
-                            ActionButton { width: 110px; label: "刷新目录"; clicked => { root.refresh-versions(); } }
-                        }
-                        Text { text: "npm 版本目录（含 alpha、beta、rc 预览版）；共 " + root.available-version-count + " 个版本，可滚动选择。";
-                            color: Theme.on-surface-variant; font-size: Theme.font-size-12; }
-                        Rectangle {
-                            vertical-stretch: 1;
-                            min-height: 150px;
-                            background: Theme.surface-container-lowest;
-                            border-radius: Theme.radius-4;
-                            ScrollView {
-                                VerticalLayout { spacing: Theme.space-4; padding: Theme.space-5;
-                                    for row in root.available-versions: Rectangle {
-                                        height: 32px; background: root.form-version == row.version ? Theme.secondary-container : Theme.surface-container-low;
-                                        border-radius: Theme.radius-5;
-                                        HorizontalLayout { padding-left: Theme.space-8; padding-right: Theme.space-6; spacing: Theme.space-8;
-                                            Text { text: row.version; color: Theme.on-surface; font-size: Theme.font-size-13; horizontal-stretch: 1;
-                                                vertical-alignment: center; }
-                                            Text { text: row.label; color: Theme.tertiary; font-size: Theme.font-size-11; width: 90px;
-                                                vertical-alignment: center; }
-                                            ActionButton { width: 62px; height: 27px; label: "选择";
-                                                clicked => { root.form-version = row.version; } }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        Text { text: "工作目录"; color: Theme.on-surface-variant; }
-                        workspace-input := LineEdit { text <=> root.form-workspace; placeholder-text: "工作区绝对路径"; }
-                        Text { text: "Web 端口"; color: Theme.on-surface-variant; }
-                        port-input := LineEdit { text: "3080"; }
-                        ActionButton { width: 170px; label: "创建并安装"; primary: true;
-                            clicked => { root.create-instance(name-input.text, version-input.text, workspace-input.text, port-input.text); } }
+                    if root.page == 1: InstallPage {
+                        width: parent.width;
+                        height: parent.height;
+                        page <=> root.page;
+                        form-name <=> root.form-name;
+                        form-version <=> root.form-version;
+                        form-workspace <=> root.form-workspace;
+                        available-versions: root.available-versions;
+                        available-version-count: root.available-version-count;
+                        refresh-versions => { root.refresh-versions(); }
+                        create-instance(name, version, workspace, port) => { root.create-instance(name, version, workspace, port); }
                     }
-
-                    // --- Page: 实例管理 ---
-                    if root.page == 2: VerticalLayout {
-                        padding: Theme.space-24;
-                        spacing: Theme.space-12;
-                        PageTitle { label: "实例管理"; }
-                        Text { text: "选择实例后可启动、复制到新版本或删除。"; color: Theme.on-surface-variant; font-size: Theme.font-size-13; }
-                        ScrollView {
-                            vertical-stretch: 1;
-                            VerticalLayout {
-                                spacing: Theme.space-8;
-                                for row in root.instances: Rectangle {
-                                    height: 96px; background: root.selected-id == row.id ? Theme.secondary-container : Theme.surface-container-lowest;
-                                    border-radius: Theme.radius-4;
-                                    VerticalLayout { padding: Theme.space-12; spacing: Theme.space-5;
-                                        Text { text: row.name + "  ·  " + row.version; font-size: Theme.font-size-16; font-weight: 700; color: Theme.on-surface; }
-                                        Text { text: row.workspace; font-size: Theme.font-size-12; color: Theme.on-surface-variant; }
-                                        HorizontalLayout { spacing: Theme.space-8;
-                                            ActionButton { width: 82px; label: "选择"; clicked => { root.selected-id = row.id; root.select-instance(row.id); } }
-                                            ActionButton { width: 82px; label: "启动"; clicked => { root.selected-id = row.id; root.select-instance(row.id); root.launch-instance(); } }
-                                            ActionButton { width: 100px; label: "复制版本"; clicked => { root.clone-instance(row.id); } }
-                                            ActionButton { width: 82px; label: "删除"; clicked => { root.pending-delete-id = row.id; } }
-                                            Rectangle { horizontal-stretch: 1; background: transparent; }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                    if root.page == 2: InstancesPage {
+                        width: parent.width;
+                        height: parent.height;
+                        page <=> root.page;
+                        instances: root.instances;
+                        selected-id <=> root.selected-id;
+                        pending-delete-id <=> root.pending-delete-id;
+                        select-instance(id) => { root.select-instance(id); }
+                        launch-instance => { root.launch-instance(); }
+                        clone-instance(id) => { root.clone-instance(id); }
                     }
-
-                    // --- Page: 插件市场 ---
-                    if root.page == 3: VerticalLayout {
-                        padding: Theme.space-24;
-                        spacing: Theme.space-12;
-                        PageTitle { label: "插件市场"; }
-                        Text { text: "仅显示当前实例有明确兼容证据的插件版本。"; color: Theme.on-surface-variant; font-size: Theme.font-size-13; }
-                        Rectangle { height: 145px; background: Theme.surface-container-lowest; border-radius: Theme.radius-4;
-                            VerticalLayout { padding: Theme.space-12; spacing: Theme.space-5;
-                                Text { text: "当前实例已安装"; font-size: Theme.font-size-15; font-weight: 700; color: Theme.on-surface; }
-                                ScrollView { vertical-stretch: 1;
-                                    VerticalLayout { spacing: Theme.space-5;
-                                        for package in root.installed-plugins: HorizontalLayout { height: 32px; spacing: Theme.space-8;
-                                            Text { text: package; font-size: Theme.font-size-13; color: Theme.on-surface-variant; horizontal-stretch: 1; vertical-alignment: center; }
-                                            ActionButton { width: 75px; label: "卸载"; clicked => { root.pending-remove-plugin = package; } }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        HorizontalLayout { spacing: Theme.space-10;
-                            plugin-search := LineEdit { placeholder-text: "搜索 GitHub 插件仓库"; horizontal-stretch: 1; }
-                            ActionButton { width: 90px; label: "搜索"; clicked => { root.refresh-plugins(plugin-search.text); } }
-                        }
-                        ScrollView {
-                            vertical-stretch: 1;
-                            VerticalLayout { spacing: Theme.space-8;
-                                for row in root.plugins: Rectangle {
-                                    height: 104px; background: Theme.surface-container-lowest; border-radius: Theme.radius-4;
-                                    VerticalLayout { padding: Theme.space-12; spacing: Theme.space-5;
-                                        Text { text: row.name + "  " + row.version; font-size: Theme.font-size-15; font-weight: 700; color: Theme.on-surface; }
-                                        Text { text: row.summary; color: Theme.on-surface-variant; font-size: Theme.font-size-12; overflow: elide; }
-                                        HorizontalLayout { spacing: Theme.space-8;
-                                            Text { text: row.package; font-size: Theme.font-size-12; color: Theme.on-surface-variant; horizontal-stretch: 1; vertical-alignment: center; }
-                                            ActionButton { width: 90px; label: "安装"; primary: true;
-                                                clicked => { root.install-plugin(row.package, row.version, row.repo); } }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                    if root.page == 3: PluginsPage {
+                        width: parent.width;
+                        height: parent.height;
+                        page <=> root.page;
+                        installed-plugins: root.installed-plugins;
+                        plugins: root.plugins;
+                        pending-remove-plugin <=> root.pending-remove-plugin;
+                        refresh-plugins(query) => { root.refresh-plugins(query); }
+                        install-plugin(package, version, repo) => { root.install-plugin(package, version, repo); }
                     }
-
-                    // --- Page: 设置 ---
-                    if root.page == 4: VerticalLayout {
-                        padding: Theme.space-24;
-                        spacing: Theme.space-12;
-                        PageTitle { label: "设置"; }
-                        Text { text: "设置项待补充。模型路由、API Key 与端点请在实例的 Harness 网页中管理。";
-                            color: Theme.on-surface-variant; font-size: Theme.font-size-13; }
-                        Rectangle { vertical-stretch: 1; background: transparent; }
+                    if root.page == 4: SettingsPage {
+                        width: parent.width;
+                        height: parent.height;
+                        page <=> root.page;
                     }
-
-                    // --- Page: 运行日志 ---
-                    if root.page == 5: VerticalLayout {
-                        padding: Theme.space-24;
-                        spacing: Theme.space-12;
-                        PageTitle { label: "运行日志"; }
-                        ScrollView { vertical-stretch: 1;
-                            Text { text: root.log-text; font-family: "Consolas"; font-size: Theme.font-size-12; color: Theme.on-surface; wrap: word-wrap; }
-                        }
+                    if root.page == 5: LogPage {
+                        width: parent.width;
+                        height: parent.height;
+                        log-text: root.log-text;
                     }
                 }
             }

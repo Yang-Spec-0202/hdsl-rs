@@ -33,11 +33,13 @@ $lines += 'export component Icon {'
 $lines += '    in property <string> name;'
 $lines += '    in property <length> icon-size: 24px;'
 $lines += '    in property <color> tint: Theme.on-surface;'
+$lines += '    in-out property <angle> rotation-angle: 0deg;'
 $lines += '    width: icon-size;'
 $lines += '    height: icon-size;'
+$lines += '    animate rotation-angle { duration: 1s; iteration-count: -1; easing: linear; }'
 foreach ($icon in $icons) {
     $name = $icon.BaseName
-    $lines += "    if name == `"$name`": Image { width: parent.width; height: parent.height; source: @image-url(`"assets/icons/$($icon.Name)`"); colorize: tint; image-fit: contain; }"
+    $lines += "    if name == `"$name`": Image { width: parent.width; height: parent.height; source: @image-url(`"assets/icons/$($icon.Name)`"); colorize: tint; image-fit: contain; transform-rotation: root.rotation-angle; transform-origin: { x: parent.width / 2, y: parent.height / 2 }; }"
 }
 $lines += '}'
 

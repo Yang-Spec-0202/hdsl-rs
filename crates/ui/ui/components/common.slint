@@ -1,6 +1,7 @@
 // Shared primitives mirroring HMCL's ui/construct widgets.
 import { Theme } from "../theme.slint";
 import { Icon } from "../icons.slint";
+import { LineEdit, CheckBox as StdCheckBox } from "std-widgets.slint";
 
 // Approximates HMCL's RipplerContainer: a hover/press overlay behind content.
 export component RippleArea inherits Rectangle {
@@ -227,5 +228,124 @@ export component RaisedButton inherits Rectangle {
         border-radius: parent.border-radius;
         background: ta.pressed ? Theme.on-primary.with-alpha(0.16) : transparent;
         animate background { duration: Theme.motion-short4; }
+    }
+}
+
+// Page heading, mirrors HMCL page titles.
+export component PageTitle inherits Text {
+    in property <string> label;
+    text: label;
+    color: Theme.on-surface;
+    font-size: Theme.font-size-22;
+    font-weight: 700;
+    height: 38px;
+    vertical-alignment: center;
+}
+
+// Generic action button keeping the original HDSL page API.
+export component ActionButton inherits Rectangle {
+    in property <string> label;
+    in property <bool> primary: false;
+    in property <bool> enabled: true;
+    callback clicked();
+    height: 34px;
+    border-radius: Theme.radius-4;
+    border-width: primary ? 0px : 1px;
+    border-color: Theme.outline;
+    background: primary ? Theme.primary : transparent;
+    opacity: enabled ? 1 : 0.4;
+    Text {
+        text: root.label;
+        color: primary ? Theme.on-primary : Theme.primary;
+        font-size: Theme.font-size-14;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    ta := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.clicked(); }
+    }
+    Rectangle {
+        width: parent.width;
+        height: parent.height;
+        border-radius: parent.border-radius;
+        background: ta.pressed ? Theme.on-surface.with-alpha(0.12) : (ta.has-hover ? Theme.on-surface.with-alpha(0.04) : transparent);
+        animate background { duration: Theme.motion-short4; }
+    }
+}
+
+// HMCL .jfx-tool-bar-button: 37px tall, radius 5, transparent.
+export component ToolbarButton inherits Rectangle {
+    in property <string> icon;
+    in property <string> label: "";
+    callback clicked();
+    height: 37px;
+    width: label == "" ? 37px : content.preferred-width + Theme.space-16;
+    border-radius: Theme.radius-5;
+    background: ta.pressed
+        ? Theme.on-surface.with-alpha(0.12)
+        : (ta.has-hover ? Theme.on-surface.with-alpha(0.04) : transparent);
+    animate background { duration: Theme.motion-short4; }
+    content := HorizontalLayout {
+        x: (parent.width - self.preferred-width) / 2;
+        y: 0;
+        height: parent.height;
+        spacing: Theme.space-6;
+        alignment: center;
+        Icon { icon-size: 20px; name: root.icon; tint: Theme.on-surface; }
+        if root.label != "": Text {
+            text: root.label;
+            color: Theme.on-surface;
+            font-size: Theme.font-size-14;
+            vertical-alignment: center;
+        }
+    }
+    ta := TouchArea { clicked => { root.clicked(); } }
+}
+
+// Styled wrapper around the standard text field.
+export component TextField inherits Rectangle {
+    in property <string> placeholder: "";
+    in-out property <string> text <=> input.text;
+    in property <bool> enabled: true;
+    height: 36px;
+    border-radius: Theme.radius-4;
+    background: Theme.surface-container-highest;
+    opacity: enabled ? 1 : 0.5;
+    input := LineEdit {
+        x: Theme.space-8;
+        y: 0;
+        width: parent.width - Theme.space-16;
+        height: parent.height;
+        placeholder-text: root.placeholder;
+        enabled: root.enabled;
+    }
+}
+
+export component CheckBox inherits StdCheckBox {
+    height: 30px;
+}
+
+// HMCL SpinnerPane: centered spinner while loading.
+export component SpinnerPane inherits Rectangle {
+    in property <bool> spinning: true;
+    in property <string> message: "";
+    background: transparent;
+    VerticalLayout {
+        alignment: center;
+        spacing: Theme.space-10;
+        Icon {
+            x: (parent.width - 28px) / 2;
+            icon-size: 28px;
+            name: "refresh";
+            tint: Theme.primary-container;
+            rotation-angle: root.spinning ? 360deg : 0deg;
+        }
+        if root.message != "": Text {
+            text: root.message;
+            color: Theme.on-surface-variant;
+            font-size: Theme.font-size-13;
+            horizontal-alignment: center;
+        }
     }
 }

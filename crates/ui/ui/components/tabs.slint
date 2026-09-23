@@ -1,0 +1,47 @@
+// Tab header mirroring HMCL TabHeader.
+import { Theme } from "../theme.slint";
+
+export component TabHeader inherits Rectangle {
+    in property <[string]> tabs;
+    in-out property <int> current: 0;
+    callback selected(int);
+
+    height: 48px;
+    background: Theme.surface;
+
+    HorizontalLayout {
+        spacing: 0;
+        for tab[index] in root.tabs: Rectangle {
+            height: parent.height;
+            width: tab-text.preferred-width + 34px;
+            background: ta.has-hover ? Theme.on-surface.with-alpha(0.04) : transparent;
+            Text {
+                x: 17px;
+                text: tab;
+                color: index == root.current ? Theme.primary : Theme.on-surface-variant;
+                font-size: Theme.font-size-16;
+                vertical-alignment: center;
+                height: parent.height;
+            }
+            tab-text := Text {
+                text: tab;
+                font-size: Theme.font-size-16;
+                visible: false;
+            }
+            Rectangle {
+                x: 17px;
+                y: parent.height - 2px;
+                width: tab-text.preferred-width;
+                height: 2px;
+                background: index == root.current ? Theme.primary-container : transparent;
+                animate background { duration: Theme.motion-short4; }
+            }
+            ta := TouchArea {
+                clicked => {
+                    root.current = index;
+                    root.selected(index);
+                }
+            }
+        }
+    }
+}

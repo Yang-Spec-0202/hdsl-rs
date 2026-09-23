@@ -1,0 +1,62 @@
+﻿// Install page. HMCL counterpart: ui/download/VersionsPage + InstallersPage.
+import { LineEdit, ScrollView } from "std-widgets.slint";
+import { Theme } from "../theme.slint";
+import { PageTitle, ActionButton } from "../components/common.slint";
+import { VersionRow } from "../models.slint";
+
+export component InstallPage inherits Rectangle {
+    in-out property <int> page;
+    in-out property <string> form-name;
+    in-out property <string> form-version;
+    in-out property <string> form-workspace;
+    in property <[VersionRow]> available-versions;
+    in property <int> available-version-count;
+    callback refresh-versions();
+    callback create-instance(string, string, string, string);
+
+    background: transparent;
+
+    VerticalLayout {
+        padding: Theme.space-24;
+        spacing: Theme.space-8;
+        PageTitle { label: "安装新版本"; }
+        Text { text: "填写实例信息。下载会校验 Node.js 与 Harness 安装包。"; color: Theme.on-surface-variant; font-size: Theme.font-size-13; }
+        Text { text: "实例名称"; color: Theme.on-surface-variant; }
+        name-input := LineEdit { placeholder-text: "例如：日常开发"; text <=> root.form-name; }
+        Text { text: "Harness 版本"; color: Theme.on-surface-variant; }
+        HorizontalLayout { spacing: Theme.space-10;
+            version-input := LineEdit { text <=> root.form-version; placeholder-text: "例如 0.1.7-alpha.2"; horizontal-stretch: 1; }
+            ActionButton { width: 110px; label: "刷新目录"; clicked => { root.refresh-versions(); } }
+        }
+        Text { text: "npm 版本目录（含 alpha、beta、rc 预览版）；共 " + root.available-version-count + " 个版本，可滚动选择。";
+            color: Theme.on-surface-variant; font-size: Theme.font-size-12; }
+        Rectangle {
+            vertical-stretch: 1;
+            min-height: 150px;
+            background: Theme.surface-container-lowest;
+            border-radius: Theme.radius-4;
+            ScrollView {
+                VerticalLayout { spacing: Theme.space-4; padding: Theme.space-5;
+                    for row in root.available-versions: Rectangle {
+                        height: 32px; background: root.form-version == row.version ? Theme.secondary-container : Theme.surface-container-low;
+                        border-radius: Theme.radius-5;
+                        HorizontalLayout { padding-left: Theme.space-8; padding-right: Theme.space-6; spacing: Theme.space-8;
+                            Text { text: row.version; color: Theme.on-surface; font-size: Theme.font-size-13; horizontal-stretch: 1;
+                                vertical-alignment: center; }
+                            Text { text: row.label; color: Theme.tertiary; font-size: Theme.font-size-11; width: 90px;
+                                vertical-alignment: center; }
+                            ActionButton { width: 62px; height: 27px; label: "选择";
+                                clicked => { root.form-version = row.version; } }
+                        }
+                    }
+                }
+            }
+        }
+        Text { text: "工作目录"; color: Theme.on-surface-variant; }
+        workspace-input := LineEdit { text <=> root.form-workspace; placeholder-text: "工作区绝对路径"; }
+        Text { text: "Web 端口"; color: Theme.on-surface-variant; }
+        port-input := LineEdit { text: "3080"; }
+        ActionButton { width: 170px; label: "创建并安装"; primary: true;
+            clicked => { root.create-instance(name-input.text, version-input.text, workspace-input.text, port-input.text); } }
+    }
+}

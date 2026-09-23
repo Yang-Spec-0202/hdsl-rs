@@ -1,0 +1,26 @@
+﻿// Runtime log page. HMCL counterpart: ui/LogWindow.
+import { ScrollView } from "std-widgets.slint";
+import { Theme } from "../theme.slint";
+import { PageTitle } from "../components/common.slint";
+
+export component LogPage inherits Rectangle {
+    in property <string> log-text;
+
+    background: transparent;
+
+    VerticalLayout {
+        padding: Theme.space-24;
+        spacing: Theme.space-12;
+        PageTitle { label: "运行日志"; }
+        ScrollView {
+            vertical-stretch: 1;
+            Text {
+                text: root.log-text;
+                font-family: "Consolas";
+                font-size: Theme.font-size-12;
+                color: Theme.on-surface;
+                wrap: word-wrap;
+            }
+        }
+    }
+}
