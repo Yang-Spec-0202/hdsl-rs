@@ -9,11 +9,11 @@ export component LineRow inherits RippleArea {
     in property <string> title;
     in property <string> subtitle: "";
     in property <bool> enabled: true;
-    in property <bool> interactive: false;
+    in property <bool> row-interactive: false;
     in property <length> row-height: root.subtitle == "" ? 48px : 64px;
 
     ripple: Theme.on-surface-variant;
-    interactive: root.enabled && root.interactive;
+    interactive: root.enabled && root.row-interactive;
     height: row-height;
     opacity: enabled ? 1 : 0.4;
 
@@ -45,7 +45,7 @@ export component LineButton inherits LineRow {
     in property <string> trailing: "";
     in property <string> trailing-icon: "unfold-more";
 
-    interactive: true;
+    row-interactive: true;
 
     Text {
         x: parent.width - Theme.space-16 - (trailing-icon != "" ? 28px : 0px) - self.width;
@@ -69,10 +69,15 @@ export component LineButton inherits LineRow {
 export component LineSelectButton inherits LineRow {
     in property <[string]> options;
     in-out property <int> selected-index: 0;
-    property <bool> show-options: false;
 
-    interactive: true;
-    clicked => { root.show-options = !root.show-options; }
+    row-interactive: true;
+    clicked => {
+        if popup.is-open {
+            popup.close();
+        } else {
+            popup.show();
+        }
+    }
 
     Text {
         x: parent.width - Theme.space-16 - 24px - self.width;
@@ -90,12 +95,12 @@ export component LineSelectButton inherits LineRow {
         name: "unfold-more";
         tint: Theme.on-surface-variant;
     }
-    if root.show-options: PopupWindow {
-        x: root.absolute-position.x + root.width - 180px;
-        y: root.absolute-position.y + root.height;
+    popup := PopupWindow {
+        x: root.width - 180px;
+        y: root.height;
         width: 180px;
         height: Math.min(root.options.length * 36px + 8px, 260px);
-        close-policy: close-on-click-outside;
+        close-policy: close-on-click;
         Rectangle {
             background: Theme.surface-container-low;
             border-radius: Theme.radius-4;
@@ -121,7 +126,7 @@ export component LineSelectButton inherits LineRow {
                     ta := TouchArea {
                         clicked => {
                             root.selected-index = index;
-                            root.show-options = false;
+                            popup.close();
                         }
                     }
                 }

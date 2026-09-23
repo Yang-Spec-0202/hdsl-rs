@@ -3,7 +3,7 @@ import { Theme } from "../theme.slint";
 
 export component ComponentList inherits Rectangle {
     in property <string> title: "";
-    in property <bool> transparent: false;
+    in property <bool> flat: false;
     background: transparent;
 
     VerticalLayout {
@@ -11,7 +11,7 @@ export component ComponentList inherits Rectangle {
         if root.title != "": HorizontalLayout {
             height: 30px;
             padding-left: Theme.space-16;
-            alignment: left;
+            alignment: start;
             Text {
                 text: root.title;
                 color: Theme.on-surface;
@@ -20,9 +20,9 @@ export component ComponentList inherits Rectangle {
             }
         }
         Rectangle {
-            background: root.transparent ? transparent : Theme.surface-container-lowest;
+            background: root.flat ? transparent : Theme.surface-container-lowest;
             border-radius: Theme.radius-4;
-            drop-shadow-color: root.transparent ? transparent : #0000001f;
+            drop-shadow-color: root.flat ? transparent : #0000001f;
             drop-shadow-blur: 5px;
             drop-shadow-offset-y: 1px;
             VerticalLayout {
@@ -34,7 +34,7 @@ export component ComponentList inherits Rectangle {
 }
 
 export component OptionsList inherits ComponentList {
-    transparent: true;
+    flat: true;
 }
 
 export component ComponentSublist inherits Rectangle {
@@ -67,9 +67,13 @@ export component ComponentSublist inherits Rectangle {
                 clicked => { root.expanded = !root.expanded; }
             }
         }
-        if root.expanded: VerticalLayout {
-            spacing: 0;
-            @children
+        Rectangle {
+            height: root.expanded ? inner.preferred-height : 0px;
+            clip: true;
+            inner := VerticalLayout {
+                spacing: 0;
+                @children
+            }
         }
     }
 }
