@@ -99,6 +99,12 @@ fn installs_and_starts_official_preview() {
         Ok(true)
     })
     .unwrap();
+    let workspace = instance.dsh(&paths).unwrap().join("pnpm-workspace.yaml");
+    if workspace.is_file() {
+        let settings: serde_yaml::Value =
+            serde_yaml::from_slice(&std::fs::read(workspace).unwrap()).unwrap();
+        assert!(settings.get("overrides").is_none());
+    }
     let version = run_dsh(&paths, &instance, &node, &["--version"]).unwrap();
     assert!(version.status.success());
     assert!(String::from_utf8_lossy(&version.stdout).contains(&instance.version));

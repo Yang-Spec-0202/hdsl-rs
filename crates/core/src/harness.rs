@@ -76,13 +76,6 @@ where
         target.join("package.json"),
         serde_json::to_vec_pretty(&manifest)?,
     )?;
-    fs::write(
-        target.join("pnpm-workspace.yaml"),
-        format!(
-            "overrides:\n  '@deepseek-ai/dsh-app-boot': '{}'\n",
-            instance.version
-        ),
-    )?;
     let mut approved = BTreeSet::new();
     let mut installed = false;
     for _ in 0..8 {
