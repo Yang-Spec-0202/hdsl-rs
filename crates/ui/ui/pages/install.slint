@@ -1,7 +1,8 @@
-﻿// Install page. HMCL counterpart: ui/download/VersionsPage + InstallersPage.
-import { LineEdit, ScrollView } from "std-widgets.slint";
+﻿// Install page. HMCL counterparts: ui/download/VersionsPage + AbstractInstallersPage.
+import { ScrollView, LineEdit } from "std-widgets.slint";
 import { Theme } from "../theme.slint";
-import { PageTitle, ActionButton } from "../components/common.slint";
+import { Icon } from "../icons.slint";
+import { PageTitle, ActionButton, RaisedButton, BorderButton, Card, ImageContainer, TwoLineListItem, ToolbarButton, TextField } from "../components/common.slint";
 import { VersionRow } from "../models.slint";
 
 export component InstallPage inherits Rectangle {
@@ -14,49 +15,201 @@ export component InstallPage inherits Rectangle {
     callback refresh-versions();
     callback create-instance(string, string, string, string);
 
+    property <string> query: "";
+    property <int> type-filter: 0;
+    property <string> port-text: "3080";
+
     background: transparent;
 
+    // A row is 正式版 when its label does not contain 「预览」.
+    function is-release(row: VersionRow) -> bool {
+        row.label.replace-all("预览", "") == row.label
+    }
+
+    function matches-type(row: VersionRow) -> bool {
+        root.type-filter == 0
+            || (root.type-filter == 1 && root.is-release(row))
+            || (root.type-filter == 2 && !root.is-release(row))
+    }
+
+    function matches-query(row: VersionRow) -> bool {
+        root.query == ""
+            || row.version.to-lowercase().replace-all(root.query.to-lowercase(), "") != row.version.to-lowercase()
+    }
+
+    function visible-row(row: VersionRow) -> bool {
+        root.matches-type(row) && root.matches-query(row)
+    }
+
     VerticalLayout {
-        padding: Theme.space-24;
-        spacing: Theme.space-8;
+        padding: Theme.space-16;
+        spacing: Theme.space-10;
+
         PageTitle { label: "安装新版本"; }
-        Text { text: "填写实例信息。下载会校验 Node.js 与 Harness 安装包。"; color: Theme.on-surface-variant; font-size: Theme.font-size-13; }
-        Text { text: "实例名称"; color: Theme.on-surface-variant; }
-        name-input := LineEdit { placeholder-text: "例如：日常开发"; text <=> root.form-name; }
-        Text { text: "Harness 版本"; color: Theme.on-surface-variant; }
-        HorizontalLayout { spacing: Theme.space-10;
-            version-input := LineEdit { text <=> root.form-version; placeholder-text: "例如 0.1.7-alpha.2"; horizontal-stretch: 1; }
-            ActionButton { width: 110px; label: "刷新目录"; clicked => { root.refresh-versions(); } }
-        }
-        Text { text: "npm 版本目录（含 alpha、beta、rc 预览版）；共 " + root.available-version-count + " 个版本，可滚动选择。";
-            color: Theme.on-surface-variant; font-size: Theme.font-size-12; }
+
+        // --- Search card (HMCL VersionsPage searchPane) ---
         Rectangle {
-            vertical-stretch: 1;
-            min-height: 150px;
+            height: 56px;
             background: Theme.surface-container-lowest;
             border-radius: Theme.radius-4;
-            ScrollView {
-                VerticalLayout { spacing: Theme.space-4; padding: Theme.space-5;
-                    for row in root.available-versions: Rectangle {
-                        height: 32px; background: root.form-version == row.version ? Theme.secondary-container : Theme.surface-container-low;
-                        border-radius: Theme.radius-5;
-                        HorizontalLayout { padding-left: Theme.space-8; padding-right: Theme.space-6; spacing: Theme.space-8;
-                            Text { text: row.version; color: Theme.on-surface; font-size: Theme.font-size-13; horizontal-stretch: 1;
-                                vertical-alignment: center; }
-                            Text { text: row.label; color: Theme.tertiary; font-size: Theme.font-size-11; width: 90px;
-                                vertical-alignment: center; }
-                            ActionButton { width: 62px; height: 27px; label: "选择";
-                                clicked => { root.form-version = row.version; } }
+            HorizontalLayout {
+                padding: Theme.space-10;
+                spacing: Theme.space-16;
+                cross-axis-alignment: center;
+                Text {
+                    text: "名称";
+                    color: Theme.on-surface;
+                    font-size: Theme.font-size-13;
+                    vertical-alignment: center;
+                }
+                TextField {
+                    horizontal-stretch: 1;
+                    placeholder: "输入版本名称进行搜索";
+                    text <=> root.query;
+                }
+                Text {
+                    text: "版本类型";
+                    color: Theme.on-surface;
+                    font-size: Theme.font-size-13;
+                    vertical-alignment: center;
+                }
+                HorizontalLayout {
+                    spacing: Theme.space-4;
+                    cross-axis-alignment: center;
+                    ActionButton { width: 62px; label: "全部"; primary: root.type-filter == 0; clicked => { root.type-filter = 0; } }
+                    ActionButton { width: 70px; label: "正式版"; primary: root.type-filter == 1; clicked => { root.type-filter = 1; } }
+                    ActionButton { width: 70px; label: "预览版"; primary: root.type-filter == 2; clicked => { root.type-filter = 2; } }
+                }
+                ActionButton { width: 84px; label: "刷新"; clicked => { root.refresh-versions(); } }
+            }
+        }
+
+        Text {
+            text: "已选择：" + (root.form-version == "" ? "未选择" : root.form-version)
+                + "　·　共 " + root.available-version-count + " 个版本";
+            color: Theme.on-surface-variant;
+            font-size: Theme.font-size-12;
+            overflow: elide;
+        }
+
+        // --- Version list (HMCL .jfx-list-view-float / .md-list-cell) ---
+        ScrollView {
+            vertical-stretch: 1;
+            VerticalLayout {
+                for row in root.available-versions: Rectangle {
+                    visible: root.visible-row(row);
+                    height: 50px;
+                    background: root.form-version == row.version ? Theme.secondary-container : transparent;
+
+                    ta := TouchArea {
+                        clicked => { root.form-version = row.version; }
+                    }
+
+                    HorizontalLayout {
+                        padding-left: Theme.space-16;
+                        padding-right: Theme.space-16;
+                        spacing: Theme.space-16;
+                        alignment: center;
+                        ImageContainer {
+                            container-size: 32px;
+                            source: @image-url("../assets/instances/grass.png");
                         }
+                        TwoLineListItem {
+                            horizontal-stretch: 1;
+                            title: row.version;
+                            subtitle: "发布日期未知";
+                            tag: row.label;
+                            selected: root.form-version == row.version;
+                        }
+                        Icon {
+                            name: "arrow-forward";
+                            icon-size: 20px;
+                            tint: Theme.on-surface-variant;
+                        }
+                    }
+
+                    Rectangle {
+                        y: parent.height - 1px;
+                        width: parent.width;
+                        height: 1px;
+                        background: Theme.outline-variant;
                     }
                 }
             }
         }
-        Text { text: "工作目录"; color: Theme.on-surface-variant; }
-        workspace-input := LineEdit { text <=> root.form-workspace; placeholder-text: "工作区绝对路径"; }
-        Text { text: "Web 端口"; color: Theme.on-surface-variant; }
-        port-input := LineEdit { text: "3080"; }
-        ActionButton { width: 170px; label: "创建并安装"; primary: true;
-            clicked => { root.create-instance(name-input.text, version-input.text, workspace-input.text, port-input.text); } }
+
+        // --- Install confirm block (HMCL AbstractInstallersPage) ---
+        Rectangle {
+            background: Theme.surface-container-low;
+            border-radius: Theme.radius-4;
+            VerticalLayout {
+                padding: Theme.space-16;
+                spacing: Theme.space-12;
+
+                HorizontalLayout {
+                    spacing: Theme.space-16;
+                    cross-axis-alignment: center;
+                    Text {
+                        width: 96px;
+                        text: "游戏实例名称";
+                        color: Theme.on-surface;
+                        font-size: Theme.font-size-13;
+                        vertical-alignment: center;
+                    }
+                    TextField {
+                        horizontal-stretch: 1;
+                        placeholder: "游戏实例名称";
+                        text <=> root.form-name;
+                    }
+                }
+
+                HorizontalLayout {
+                    spacing: Theme.space-16;
+                    cross-axis-alignment: center;
+                    Text {
+                        width: 96px;
+                        text: "工作目录";
+                        color: Theme.on-surface;
+                        font-size: Theme.font-size-13;
+                        vertical-alignment: center;
+                    }
+                    TextField {
+                        horizontal-stretch: 1;
+                        placeholder: "工作区绝对路径";
+                        text <=> root.form-workspace;
+                    }
+                }
+
+                HorizontalLayout {
+                    spacing: Theme.space-16;
+                    cross-axis-alignment: center;
+                    Text {
+                        width: 96px;
+                        text: "Web 端口";
+                        color: Theme.on-surface;
+                        font-size: Theme.font-size-13;
+                        vertical-alignment: center;
+                    }
+                    TextField {
+                        width: 160px;
+                        placeholder: "3080";
+                        text <=> root.port-text;
+                    }
+                    Rectangle { horizontal-stretch: 1; background: transparent; }
+                }
+
+                HorizontalLayout {
+                    spacing: Theme.space-10;
+                    cross-axis-alignment: center;
+                    Rectangle { horizontal-stretch: 1; background: transparent; }
+                    RaisedButton {
+                        width: 100px;
+                        height: 40px;
+                        label: "安装";
+                        clicked => { root.create-instance(root.form-name, root.form-version, root.form-workspace, root.port-text); }
+                    }
+                }
+            }
+        }
     }
 }
