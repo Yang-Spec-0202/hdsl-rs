@@ -5,7 +5,7 @@ use hdsl_core::plugin::{self, BuildScriptReview, CatalogItem};
 use hdsl_core::registry::Registry;
 use hdsl_core::runtime;
 use hdsl_core::{AppPaths, Instance, InstanceStore};
-use hdsl_ui::{AppWindow, InstanceRow, PluginRow};
+use hdsl_ui::{AppWindow, InstanceRow, PluginRow, VersionRow};
 use slint::{ComponentHandle, ModelRc, VecModel};
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader};
@@ -183,13 +183,18 @@ fn wire_callbacks(ui: &AppWindow, state: &Arc<Controller>) {
         let state = controller.clone();
         let update = weak.clone();
         job(weak.clone(), "读取版本目录", move || {
-            let latest = state
-                .registry
-                .versions("@deepseek-ai/dsh")?
+            let versions = state.registry.versions("@deepseek-ai/dsh")?;
+            let latest = versions.first().context("npm 暂无 Harness 版本")?.clone();
+            let rows = versions
                 .into_iter()
-                .next()
-                .context("npm 暂无 Harness 版本")?;
+                .take(12)
+                .map(|version| VersionRow {
+                    label: version_label(&version).into(),
+                    version: version.into(),
+                })
+                .collect::<Vec<_>>();
             post(update, move |ui| {
+                ui.set_available_versions(ModelRc::new(VecModel::from(rows)));
                 ui.set_latest_version(latest.clone().into());
                 if ui.get_form_version().is_empty() {
                     ui.set_form_version(latest.into());
@@ -445,6 +450,27 @@ fn wire_callbacks(ui: &AppWindow, state: &Arc<Controller>) {
             status(weak.clone(), format!("无法打开帮助：{e:#}"));
         }
     });
+    let weak = ui.as_weak();
+    ui.on_open_upstream_report(move || {
+        if let Err(e) =
+            webbrowser::open("https://github.com/deepseek-ai/deepseek-harness/discussions/7593")
+        {
+            status(weak.clone(), format!("无法打开上游报告：{e}"));
+        }
+    });
+}
+
+fn version_label(version: &str) -> &'static str {
+    match version
+        .split_once('-')
+        .map(|(_, suffix)| suffix.split('.').next().unwrap_or_default())
+    {
+        Some("alpha") => "Alpha 预览",
+        Some("beta") => "Beta 预览",
+        Some("rc") => "RC 预览",
+        Some(_) => "预览版",
+        None => "正式版",
+    }
 }
 
 fn launch_selected(state: &Arc<Controller>, weak: slint::Weak<AppWindow>) -> Result<()> {
@@ -553,4 +579,16 @@ fn open_help() -> Result<()> {
     }
     webbrowser::open(path.to_str().context("帮助路径不是 UTF-8")?)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod version_tests {
+    use super::version_label;
+
+    #[test]
+    fn labels_preview_channels_without_treating_them_as_stable() {
+        assert_eq!(version_label("0.1.7-alpha.2"), "Alpha 预览");
+        assert_eq!(version_label("0.1.7-rc.1"), "RC 预览");
+        assert_eq!(version_label("0.1.7"), "正式版");
+    }
 }

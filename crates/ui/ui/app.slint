@@ -16,6 +16,11 @@ export struct PluginRow {
     repo: string,
 }
 
+export struct VersionRow {
+    version: string,
+    label: string,
+}
+
 component NavItem inherits Rectangle {
     in property <string> label;
     in property <bool> active;
@@ -67,6 +72,7 @@ export component AppWindow inherits Window {
 
     in-out property <[InstanceRow]> instances;
     in-out property <[PluginRow]> plugins;
+    in-out property <[VersionRow]> available-versions;
     in-out property <[string]> installed-plugins;
     in-out property <string> status-text: "准备就绪";
     in-out property <string> log-text: "";
@@ -89,6 +95,7 @@ export component AppWindow inherits Window {
 
     callback select-instance(string);
     callback refresh-versions();
+    callback open-upstream-report();
     callback create-instance(string, string, string, string);
     callback launch-instance();
     callback stop-instance();
@@ -167,18 +174,49 @@ export component AppWindow inherits Window {
                             }
                         }
                     }
+                    Rectangle {
+                        height: 105px; background: #fff5e8; border-radius: 10px;
+                        VerticalLayout { padding: 13px; spacing: 5px;
+                            Text { text: "上游版本公告 · 2026-09-23"; font-size: 15px; font-weight: 700; color: #78542a; }
+                            Text { text: "社区报告：0.1.5-rc.2 在 Windows 的 Web 启动可能失败；本地已复现 HMR 错误。";
+                                font-size: 12px; color: #78542a; wrap: word-wrap; }
+                            ActionButton { width: 125px; height: 29px; label: "查看原始报告"; clicked => { root.open-upstream-report(); } }
+                        }
+                    }
                     Rectangle { vertical-stretch: 1; background: transparent; }
                 }
                 if root.page == 1: VerticalLayout {
-                    spacing: 12px;
+                    spacing: 8px;
                     PageTitle { label: "安装新版本"; }
                     Text { text: "填写实例信息。下载会校验 Node.js 与 Harness 安装包。"; color: #718198; font-size: 13px; }
                     Text { text: "实例名称"; color: #3c506d; }
                     name-input := LineEdit { placeholder-text: "例如：日常开发"; text <=> root.form-name; }
                     Text { text: "Harness 版本"; color: #3c506d; }
                     HorizontalLayout { spacing: 10px;
-                        version-input := LineEdit { text <=> root.form-version; placeholder-text: "例如 0.1.5-rc.3"; horizontal-stretch: 1; }
-                        ActionButton { width: 110px; label: "获取最新"; clicked => { root.refresh-versions(); } }
+                        version-input := LineEdit { text <=> root.form-version; placeholder-text: "例如 0.1.7-alpha.2"; horizontal-stretch: 1; }
+                        ActionButton { width: 110px; label: "刷新目录"; clicked => { root.refresh-versions(); } }
+                    }
+                    Text { text: "npm 版本目录（含 alpha、beta、rc 预览版）；选择后仍按精确版本安装。";
+                        color: #718198; font-size: 12px; }
+                    ScrollView { height: 105px;
+                        VerticalLayout { spacing: 4px;
+                            for row in root.available-versions: Rectangle {
+                                height: 32px; background: root.form-version == row.version ? #e6effe : white;
+                                border-radius: 5px;
+                                HorizontalLayout { padding-left: 9px; padding-right: 7px; spacing: 8px;
+                                    Text { text: row.version; color: #34435a; font-size: 13px; horizontal-stretch: 1;
+                                        vertical-alignment: center; }
+                                    Text { text: row.label; color: #8b672b; font-size: 11px; width: 90px;
+                                        vertical-alignment: center; }
+                                    ActionButton { width: 62px; height: 27px; label: "选择";
+                                        clicked => { root.form-version = row.version; } }
+                                }
+                            }
+                        }
+                    }
+                    if root.form-version == "0.1.5-rc.2": Text {
+                        text: "该版本有 Windows Web 启动异常报告；详情见首页公告。";
+                        color: #9b5b20; font-size: 12px;
                     }
                     Text { text: "工作目录"; color: #3c506d; }
                     workspace-input := LineEdit { text <=> root.form-workspace; placeholder-text: "工作区绝对路径"; }

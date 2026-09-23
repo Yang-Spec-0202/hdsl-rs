@@ -78,6 +78,53 @@ fn wait_for_web(child: &mut ManagedChild, port: u16, log: &std::path::Path) {
 }
 
 #[test]
+#[ignore = "downloads the official 0.1.7 preview from npm"]
+fn installs_and_starts_official_preview() {
+    let requested_version =
+        std::env::var("HDSL_TEST_PREVIEW_VERSION").unwrap_or_else(|_| "0.1.7-alpha.2".to_owned());
+    let temp = tempfile::tempdir().unwrap();
+    let paths = AppPaths::with_root(temp.path().join("data"));
+    paths.ensure().unwrap();
+    let registry = Registry::new().unwrap();
+    let node = ensure_node24(&paths, &registry).unwrap();
+    let pnpm = ensure_pnpm(&paths, &node).unwrap();
+    let instance = Instance::new(
+        "preview".into(),
+        requested_version,
+        temp.path().to_path_buf(),
+        free_port(),
+    )
+    .unwrap();
+    install_dsh(&paths, &instance, &node, &pnpm, &registry, |_review| {
+        Ok(true)
+    })
+    .unwrap();
+    let version = run_dsh(&paths, &instance, &node, &["--version"]).unwrap();
+    assert!(version.status.success());
+    assert!(String::from_utf8_lossy(&version.stdout).contains(&instance.version));
+    let config = run_dsh(
+        &paths,
+        &instance,
+        &node,
+        &["--profile", "web", "--dump-config"],
+    )
+    .unwrap();
+    assert!(
+        config.status.success(),
+        "{}",
+        String::from_utf8_lossy(&config.stderr)
+    );
+    let log = temp.path().join("preview.log");
+    let mut web = start_web(&paths, &instance, &node, &log);
+    wait_for_web(&mut web, instance.port, &log);
+    thread::sleep(Duration::from_secs(2));
+    assert!(
+        web.0.try_wait().unwrap().is_none(),
+        "preview Web exited after listening"
+    );
+}
+
+#[test]
 #[ignore = "downloads Node.js, pnpm and Harness from official registries"]
 fn installs_exact_harness_in_isolated_home() {
     let temp = tempfile::tempdir().unwrap();
