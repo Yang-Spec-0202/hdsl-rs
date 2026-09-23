@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "repositories": [
+    {"repo":"w2112515/dsh-plugin-marketplace","package":"@w2112515/dsh-plugin-marketplace","verified":[]},
+    {"repo":"dsh-market/dsh-market","package":"dshmarket","verified":[]},
+    {"repo":"omdsh-dev/DSH-better-sidebar","package":"dsh-better-sidebar","verified":[]},
+    {"repo":"volcengine/OpenViking","package":"@openviking/dsh-memory-plugin","verified":[]}
+  ]
+}
+
