@@ -61,6 +61,10 @@ export component AppWindow inherits Window {
     in-out property <image> account-avatar: @image-url("assets/account/avatar.jpg");
     property <string> pending-delete-id: "";
     property <string> pending-remove-plugin: "";
+    property <bool> entered: false;
+    property <bool> closing: false;
+
+    init => { root.entered = true; }
     in-out property <bool> approval-pending: false;
     in-out property <string> approval-title: "";
     in-out property <string> approval-body: "";
@@ -80,6 +84,13 @@ export component AppWindow inherits Window {
     callback open-help();
     callback approve-build(bool);
 
+    // HMCL Decorator open/close animation: fade + scale from/to 0.8.
+    Timer {
+        interval: 220ms;
+        running: root.closing;
+        triggered => { root.close(); }
+    }
+
     // Frameless window with an 8px shadow inset and 8px content radius.
     Rectangle {
         x: Theme.window-shadow-inset;
@@ -94,6 +105,13 @@ export component AppWindow inherits Window {
         drop-shadow-spread: 1px;
         drop-shadow-offset-x: 0;
         drop-shadow-offset-y: 0;
+        opacity: root.entered ? (root.closing ? 0 : 1) : 0;
+        transform-scale-x: root.entered ? (root.closing ? 80% : 100%) : 80%;
+        transform-scale-y: root.entered ? (root.closing ? 80% : 100%) : 80%;
+        transform-origin: { x: self.width / 2, y: self.height / 2 };
+        animate opacity { duration: 400ms; easing: ease-out; }
+        animate transform-scale-x { duration: 400ms; easing: ease-out; }
+        animate transform-scale-y { duration: 400ms; easing: ease-out; }
 
         VerticalLayout {
             spacing: 0;
@@ -140,7 +158,7 @@ export component AppWindow inherits Window {
                     spacing: 0;
                     ShellButton { icon: "help"; clicked => { root.open-help(); } }
                     ShellButton { icon: "minimize-center"; clicked => { root.minimized = true; } }
-                    ShellButton { icon: "close"; clicked => { root.close(); } }
+                    ShellButton { icon: "close"; clicked => { root.closing = true; } }
                 }
             }
 
