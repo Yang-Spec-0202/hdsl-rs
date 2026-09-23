@@ -2,6 +2,7 @@ use crate::paths::AppPaths;
 use crate::registry::Registry;
 use anyhow::{Context, Result, bail};
 use flate2::read::GzDecoder;
+use node_semver::Version;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use std::fs::{self, File};
@@ -58,6 +59,9 @@ struct NodeRelease {
 }
 
 pub fn ensure_node24(paths: &AppPaths, registry: &Registry) -> Result<NodeRuntime> {
+    if let Some(runtime) = cached_node24(paths)? {
+        return Ok(runtime);
+    }
     let releases: Vec<NodeRelease> = registry
         .client()
         .get("https://nodejs.org/dist/index.json")
@@ -135,6 +139,32 @@ pub fn ensure_node24(paths: &AppPaths, registry: &Registry) -> Result<NodeRuntim
         bail!("Node 运行时验证失败");
     }
     Ok(runtime)
+}
+
+fn cached_node24(paths: &AppPaths) -> Result<Option<NodeRuntime>> {
+    let root = paths.root.join("runtimes/node");
+    if !root.is_dir() {
+        return Ok(None);
+    }
+    let mut candidates = Vec::new();
+    for entry in fs::read_dir(root)? {
+        let name = entry?.file_name().to_string_lossy().to_string();
+        let Ok(version) = name.parse::<Version>() else {
+            continue;
+        };
+        if !name.starts_with("24.") || version.to_string() != name {
+            continue;
+        }
+        let runtime = NodeRuntime {
+            version: name,
+            root: paths.node_runtime(&version.to_string())?,
+        };
+        if runtime.node().is_file() && runtime.npm_cli().is_file() {
+            candidates.push((version, runtime));
+        }
+    }
+    candidates.sort_by(|a, b| b.0.cmp(&a.0));
+    Ok(candidates.into_iter().next().map(|(_, runtime)| runtime))
 }
 
 pub fn ensure_pnpm(paths: &AppPaths, runtime: &NodeRuntime) -> Result<PathBuf> {
@@ -257,5 +287,21 @@ mod tests {
             sum
         );
         assert!(checksum_for(&line, "node-v24.2.0-win-x64.zip").is_err());
+    }
+    #[test]
+    fn reuses_latest_cached_node_without_registry() {
+        let root = tempfile::tempdir().unwrap();
+        let paths = AppPaths::with_root(root.path().into());
+        for version in ["24.8.0", "24.12.1", "25.0.0"] {
+            let runtime = NodeRuntime {
+                version: version.into(),
+                root: paths.node_runtime(version).unwrap(),
+            };
+            fs::create_dir_all(runtime.node().parent().unwrap()).unwrap();
+            fs::create_dir_all(runtime.npm_cli().parent().unwrap()).unwrap();
+            fs::write(runtime.node(), b"node").unwrap();
+            fs::write(runtime.npm_cli(), b"npm").unwrap();
+        }
+        assert_eq!(cached_node24(&paths).unwrap().unwrap().version, "24.12.1");
     }
 }
