@@ -1,0 +1,147 @@
+﻿// Instance list page. HMCL counterpart: ui/instances/GameListPage.
+import { LineEdit, ScrollView } from "std-widgets.slint";
+import { Theme } from "../theme.slint";
+import { ToolbarButton, InstanceIcon, TwoLineListItem, IconButton } from "../components/common.slint";
+import { InstanceRow } from "../models.slint";
+
+export component InstancesPage inherits Rectangle {
+    in-out property <int> page;
+    in property <[InstanceRow]> instances;
+    in-out property <string> selected-id;
+    in-out property <string> pending-delete-id;
+    callback select-instance(string);
+    callback launch-instance();
+    callback clone-instance(string);
+    callback refresh-instances();
+
+    property <string> query: "";
+    property <bool> searching: false;
+
+    pure function matches(name: string) -> bool {
+        if root.query == "" {
+            return true;
+        }
+        return name.to-lowercase().replace-all(root.query.to-lowercase(), "") != name.to-lowercase();
+    }
+
+    background: transparent;
+
+    VerticalLayout {
+        padding: Theme.space-10;
+        spacing: Theme.space-8;
+
+        if !root.searching: HorizontalLayout {
+            height: 37px;
+            spacing: Theme.space-2;
+
+            ToolbarButton {
+                icon: "refresh";
+                label: "刷新";
+                clicked => { root.refresh-instances(); }
+            }
+            ToolbarButton {
+                icon: "download";
+                label: "安装新版本";
+                clicked => { root.page = 1; }
+            }
+            ToolbarButton {
+                icon: "search";
+                label: "搜索";
+                clicked => { root.searching = true; }
+            }
+            Rectangle { horizontal-stretch: 1; background: transparent; }
+        }
+
+        if root.searching: HorizontalLayout {
+            height: 37px;
+            spacing: Theme.space-5;
+
+            LineEdit {
+                horizontal-stretch: 1;
+                placeholder-text: "搜索";
+                text <=> root.query;
+            }
+            ToolbarButton {
+                icon: "close";
+                clicked => { root.searching = false; root.query = ""; }
+            }
+        }
+
+        if root.instances.length == 0: Text {
+            vertical-stretch: 1;
+            text: "没有已安装的游戏。";
+            color: Theme.on-surface-variant;
+            font-size: Theme.font-size-20;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+
+        if root.instances.length > 0: ScrollView {
+            vertical-stretch: 1;
+
+            VerticalLayout {
+                spacing: 0;
+
+                for row in root.instances: Rectangle {
+                    visible: root.matches(row.name);
+                    height: 56px;
+                    background: root.selected-id == row.id ? Theme.secondary-container : transparent;
+
+                    TouchArea {
+                        clicked => {
+                            root.selected-id = row.id;
+                            root.select-instance(row.id);
+                        }
+                    }
+
+                    Rectangle {
+                        x: 0;
+                        y: parent.height - 1px;
+                        width: parent.width;
+                        height: 1px;
+                        background: Theme.outline-variant;
+                    }
+
+                    HorizontalLayout {
+                        x: 0;
+                        y: 0;
+                        width: parent.width;
+                        height: parent.height;
+                        padding-left: Theme.space-8;
+                        padding-right: Theme.space-8;
+                        spacing: Theme.space-8;
+                        cross-axis-alignment: center;
+
+                        InstanceIcon {
+                            container-size: 32px;
+                            name: row.icon;
+                        }
+
+                        TwoLineListItem {
+                            horizontal-stretch: 1;
+                            title: row.name;
+                            subtitle: row.version + "  " + row.workspace;
+                        }
+
+                        IconButton {
+                            icon: "rocket-launch";
+                            clicked => {
+                                root.selected-id = row.id;
+                                root.select-instance(row.id);
+                                root.launch-instance();
+                            }
+                        }
+                        IconButton {
+                            icon: "folder-copy";
+                            clicked => { root.clone-instance(row.id); }
+                        }
+                        IconButton {
+                            icon: "delete";
+                            clicked => { root.pending-delete-id = row.id; }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

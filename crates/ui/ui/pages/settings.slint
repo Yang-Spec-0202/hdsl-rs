@@ -1,0 +1,448 @@
+﻿// Settings page. HMCL counterpart: ui/main/LauncherSettingsPage.
+// Slice S5: sidebar navigation plus eight tabs rebuilt on the HMCL layout.
+// The launcher never exposes Harness credentials, endpoints or model routing here.
+import { ScrollView } from "std-widgets.slint";
+import { Theme } from "../theme.slint";
+import { AdvancedListItem, AdvancedListBox } from "../components/navigation.slint";
+import { ClassTitle, ImageContainer } from "../components/common.slint";
+import { ComponentList, OptionsList, ComponentSublist } from "../components/lists.slint";
+import { LineRow, LineButton, LineSelectButton, LineToggleButton, LinePane, LineTextPane } from "../components/lines.slint";
+
+export component SettingsPage inherits Rectangle {
+    in-out property <int> page;
+
+    property <int> tab: 0;
+
+    // Local demo state; persistence is wired in a later slice.
+    property <int> isolation-index: 0;
+    property <int> window-type-index: 0;
+    property <bool> show-log: false;
+    property <int> update-channel-index: 0;
+    property <bool> preview-updates: false;
+    property <int> language-index: 0;
+    property <bool> disable-april-fools: false;
+    property <int> theme-mode-index: 0;
+    property <int> background-index: 0;
+    property <bool> titlebar-transparent: false;
+    property <bool> window-transparent: false;
+    property <bool> disable-animation: false;
+    property <int> version-list-source-index: 0;
+    property <int> download-source-index: 0;
+    property <int> addon-source-index: 0;
+
+    background: transparent;
+
+    HorizontalLayout {
+        spacing: 0;
+
+        // --- Left sidebar (HMCL AdvancedListBox, width 200) ---
+        Rectangle {
+            width: Theme.sidebar-width;
+            background: transparent;
+
+            AdvancedListBox {
+                x: 0;
+                y: 0;
+                width: parent.width;
+                height: parent.height;
+
+                ClassTitle { title: "设置"; }
+                AdvancedListItem {
+                    title: "全局设置";
+                    icon: "settings";
+                    selected: root.tab == 0;
+                    clicked => { root.tab = 0; }
+                }
+                AdvancedListItem {
+                    title: "环境管理";
+                    icon: "local-cafe";
+                    selected: root.tab == 1;
+                    clicked => { root.tab = 1; }
+                }
+
+                ClassTitle { title: "启动器"; }
+                AdvancedListItem {
+                    title: "通用";
+                    icon: "tune";
+                    selected: root.tab == 2;
+                    clicked => { root.tab = 2; }
+                }
+                AdvancedListItem {
+                    title: "外观";
+                    icon: "style";
+                    selected: root.tab == 3;
+                    clicked => { root.tab = 3; }
+                }
+                AdvancedListItem {
+                    title: "下载";
+                    icon: "download";
+                    selected: root.tab == 4;
+                    clicked => { root.tab = 4; }
+                }
+
+                ClassTitle { title: "帮助"; }
+                AdvancedListItem {
+                    title: "帮助";
+                    icon: "help";
+                    selected: root.tab == 5;
+                    clicked => { root.tab = 5; }
+                }
+                AdvancedListItem {
+                    title: "反馈";
+                    icon: "feedback";
+                    selected: root.tab == 6;
+                    clicked => { root.tab = 6; }
+                }
+                AdvancedListItem {
+                    title: "关于";
+                    icon: "info";
+                    selected: root.tab == 7;
+                    clicked => { root.tab = 7; }
+                }
+            }
+        }
+
+        // --- Right content (HMCL TransitionPane) ---
+        Rectangle {
+            background: transparent;
+
+            // tab 0: 全局设置 (HMCL GameSettingsPage)
+            if root.tab == 0: ScrollView {
+                width: parent.width;
+                height: parent.height;
+                VerticalLayout {
+                    padding: Theme.space-10;
+                    spacing: Theme.space-10;
+
+                    ComponentList {
+                        title: "游戏";
+                        LineSelectButton {
+                            title: "默认版本隔离策略";
+                            subtitle: "新建实例默认使用的版本隔离策略";
+                            options: ["隔离所有实例", "隔离模组实例", "不隔离实例"];
+                            selected-index <=> root.isolation-index;
+                        }
+                        LineSelectButton {
+                            title: "游戏窗口类型";
+                            options: ["窗口化", "全屏", "最大化"];
+                            selected-index <=> root.window-type-index;
+                        }
+                    }
+                    OptionsList {
+                        title: "启动";
+                        LineToggleButton {
+                            title: "查看日志";
+                            subtitle: "启动结束后显示运行日志窗口";
+                            checked <=> root.show-log;
+                        }
+                        LineTextPane {
+                            title: "启动器可见性";
+                            value: "保持启动器可见";
+                        }
+                    }
+                }
+            }
+
+            // tab 1: 环境管理 (HMCL JavaManagementPage)
+            if root.tab == 1: ScrollView {
+                width: parent.width;
+                height: parent.height;
+                VerticalLayout {
+                    padding: Theme.space-10;
+                    spacing: Theme.space-10;
+
+                    // Toolbar-like row (刷新 / 下载 Node.js / 添加)
+                    HorizontalLayout {
+                        spacing: Theme.space-4;
+                        LineButton {
+                            horizontal-stretch: 1;
+                            title: "刷新";
+                            trailing-icon: "";
+                        }
+                        LineButton {
+                            horizontal-stretch: 1;
+                            title: "下载 Node.js";
+                            trailing-icon: "";
+                        }
+                        LineButton {
+                            horizontal-stretch: 1;
+                            title: "添加";
+                            trailing-icon: "";
+                        }
+                    }
+
+                    ComponentList {
+                        title: "已安装的运行时";
+                        LineTextPane {
+                            title: "Node.js 24 LTS";
+                            subtitle: "C:/Users/yua81/AppData/Local/HDSL/runtimes/node/24.9.0/node.exe";
+                            value: "v24.9.0";
+                        }
+                        LineTextPane {
+                            title: "pnpm";
+                            subtitle: "随 Node.js 24 LTS 一同安装";
+                            value: "10.15.0";
+                        }
+                    }
+                }
+            }
+
+            // tab 2: 通用 (HMCL SettingsPage)
+            if root.tab == 2: ScrollView {
+                width: parent.width;
+                height: parent.height;
+                VerticalLayout {
+                    padding: Theme.space-10;
+                    spacing: Theme.space-10;
+
+                    ComponentList {
+                        title: "更新";
+                        LineSelectButton {
+                            title: "启动器更新";
+                            options: ["稳定版", "开发版"];
+                            selected-index <=> root.update-channel-index;
+                        }
+                        LineToggleButton {
+                            title: "提前预览版本";
+                            subtitle: "接收开发版更新推送";
+                            checked <=> root.preview-updates;
+                        }
+                    }
+                    ComponentList {
+                        title: "语言";
+                        LineSelectButton {
+                            title: "语言";
+                            subtitle: "重启后生效";
+                            options: ["跟随系统语言", "简体中文", "English"];
+                            selected-index <=> root.language-index;
+                        }
+                    }
+                    ComponentList {
+                        title: "杂项";
+                        LineToggleButton {
+                            title: "不启用愚人节功能";
+                            subtitle: "重启后生效";
+                            checked <=> root.disable-april-fools;
+                        }
+                        LineButton {
+                            title: "调试";
+                            trailing: "打开日志文件夹";
+                            trailing-icon: "";
+                        }
+                    }
+                }
+            }
+
+            // tab 3: 外观 (HMCL PersonalizationPage)
+            if root.tab == 3: ScrollView {
+                width: parent.width;
+                height: parent.height;
+                VerticalLayout {
+                    padding: Theme.space-10;
+                    spacing: Theme.space-10;
+
+                    ComponentList {
+                        title: "外观";
+                        LineSelectButton {
+                            title: "主题模式";
+                            options: ["跟随系统设置", "浅色模式", "深色模式"];
+                            selected-index <=> root.theme-mode-index;
+                        }
+                        LineSelectButton {
+                            title: "背景图片";
+                            options: ["默认", "内置", "自定义"];
+                            selected-index <=> root.background-index;
+                        }
+                        LineTextPane {
+                            title: "不透明度";
+                            value: "100%";
+                        }
+                        LineToggleButton {
+                            title: "标题栏透明";
+                            checked <=> root.titlebar-transparent;
+                        }
+                        LineToggleButton {
+                            title: "窗口透明";
+                            checked <=> root.window-transparent;
+                        }
+                    }
+                    ComponentList {
+                        title: "动画";
+                        LineToggleButton {
+                            title: "关闭动画";
+                            subtitle: "重启后生效";
+                            checked <=> root.disable-animation;
+                        }
+                    }
+                }
+            }
+
+            // tab 4: 下载 (HMCL DownloadSettingsPage)
+            if root.tab == 4: ScrollView {
+                width: parent.width;
+                height: parent.height;
+                VerticalLayout {
+                    padding: Theme.space-10;
+                    spacing: Theme.space-10;
+
+                    ComponentList {
+                        title: "下载源";
+                        LineSelectButton {
+                            title: "版本列表源";
+                            options: ["自动选择下载源", "尽量使用官方源", "尽量使用镜像源"];
+                            selected-index <=> root.version-list-source-index;
+                        }
+                        LineSelectButton {
+                            title: "下载源";
+                            options: ["自动选择下载源", "尽量使用官方源", "尽量使用镜像源"];
+                            selected-index <=> root.download-source-index;
+                        }
+                        LineSelectButton {
+                            title: "附加内容默认下载源";
+                            options: ["Modrinth", "CurseForge"];
+                            selected-index <=> root.addon-source-index;
+                        }
+                    }
+                    ComponentList {
+                        title: "下载";
+                        LineTextPane {
+                            title: "文件下载缓存文件夹";
+                            subtitle: "留空表示禁用下载缓存";
+                            value: "C:/Users/yua81/AppData/Local/HDSL/cache";
+                        }
+                        LineTextPane {
+                            title: "下载线程数";
+                            value: "自动";
+                        }
+                    }
+                }
+            }
+
+            // tab 5: 帮助 (HMCL HelpPage)
+            if root.tab == 5: ScrollView {
+                width: parent.width;
+                height: parent.height;
+                VerticalLayout {
+                    padding: Theme.space-10;
+                    spacing: Theme.space-10;
+
+                    ComponentList {
+                        title: "帮助";
+                        LineButton {
+                            title: "用户手册";
+                            subtitle: "离线阅读安装与使用说明";
+                            trailing-icon: "open-in-new";
+                        }
+                        LineButton {
+                            title: "项目主页";
+                            subtitle: "查看项目源码与发布";
+                            trailing-icon: "open-in-new";
+                        }
+                        LineButton {
+                            title: "问题反馈";
+                            subtitle: "报告缺陷或提出建议";
+                            trailing-icon: "open-in-new";
+                        }
+                    }
+                }
+            }
+
+            // tab 6: 反馈 (HMCL FeedbackPage)
+            if root.tab == 6: ScrollView {
+                width: parent.width;
+                height: parent.height;
+                VerticalLayout {
+                    padding: Theme.space-10;
+                    spacing: Theme.space-10;
+
+                    ComponentList {
+                        title: "反馈渠道";
+                        LineTextPane {
+                            title: "GitHub";
+                            subtitle: "在项目仓库提交 Issue";
+                            value: "提交 Issue";
+                        }
+                        LineTextPane {
+                            title: "社区";
+                            subtitle: "与其他用户交流使用经验";
+                            value: "官方讨论区";
+                        }
+                        LineButton {
+                            title: "复制诊断信息";
+                            trailing: "复制";
+                            trailing-icon: "content-copy";
+                        }
+                    }
+                }
+            }
+
+            // tab 7: 关于 (HMCL AboutPage)
+            if root.tab == 7: ScrollView {
+                width: parent.width;
+                height: parent.height;
+                VerticalLayout {
+                    padding: Theme.space-10;
+                    spacing: Theme.space-10;
+
+                    Rectangle {
+                        height: 96px;
+                        background: Theme.surface-container-lowest;
+                        border-radius: Theme.radius-4;
+                        drop-shadow-color: #0000001f;
+                        drop-shadow-blur: 5px;
+                        drop-shadow-offset-y: 1px;
+
+                        HorizontalLayout {
+                            padding: Theme.space-16;
+                            spacing: Theme.space-16;
+                            alignment: center;
+                            ImageContainer {
+                                container-size: 56px;
+                                corner-radius: Theme.radius-6;
+                                source: @image-url("../assets/branding/icon.png");
+                            }
+                            VerticalLayout {
+                                alignment: center;
+                                spacing: Theme.space-4;
+                                Text {
+                                    text: "HDSL · Hello DeepSeek Launcher";
+                                    color: Theme.on-surface;
+                                    font-size: Theme.font-size-16;
+                                    font-weight: 700;
+                                }
+                                Text {
+                                    text: "版本 0.1.0";
+                                    color: Theme.on-surface-variant;
+                                    font-size: Theme.font-size-12;
+                                }
+                            }
+                        }
+                    }
+
+                    ComponentList {
+                        title: "致谢";
+                        LineTextPane {
+                            title: "Slint";
+                            subtitle: "跨平台原生 UI 框架";
+                            value: "MIT / GPL";
+                        }
+                        LineTextPane {
+                            title: "DeepSeek Harness";
+                            subtitle: "本启动器管理的上游运行时";
+                            value: "npm";
+                        }
+                    }
+
+                    ComponentList {
+                        title: "法律";
+                        LineButton {
+                            title: "开源许可";
+                            subtitle: "GPL-3.0-only";
+                            trailing-icon: "open-in-new";
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

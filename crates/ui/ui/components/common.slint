@@ -1,0 +1,400 @@
+// Shared primitives mirroring HMCL's ui/construct widgets.
+import { Theme } from "../theme.slint";
+import { Icon } from "../icons.slint";
+import { LineEdit, CheckBox as StdCheckBox } from "std-widgets.slint";
+
+// HMCL RipplerContainer: a 4% hover overlay plus an expanding press ripple.
+export component RippleArea inherits Rectangle {
+    in property <color> ripple: Theme.on-surface-variant;
+    in property <bool> interactive: true;
+    callback clicked();
+
+    background: transparent;
+
+    ta := TouchArea {
+        enabled: root.interactive;
+        clicked => { root.clicked(); }
+    }
+    Rectangle {
+        width: parent.width;
+        height: parent.height;
+        background: ta.has-hover ? root.ripple.with-alpha(0.04) : transparent;
+        animate background { duration: Theme.motion-short4; }
+    }
+    // Expanding circle anchored at the press point, clipped to the row.
+    Rectangle {
+        width: parent.width;
+        height: parent.height;
+        clip: true;
+        ripple-dot := Rectangle {
+            width: Math.max(root.width, root.height) * 2;
+            height: self.width;
+            border-radius: self.width / 2;
+            x: ta.mouse-x - self.width / 2;
+            y: ta.mouse-y - self.height / 2;
+            background: root.ripple.with-alpha(0.12);
+            opacity: ta.pressed ? 1 : 0;
+            transform-scale-x: ta.pressed ? 100% : 0%;
+            transform-scale-y: ta.pressed ? 100% : 0%;
+            animate opacity { duration: Theme.motion-short4; easing: ease-out; }
+            animate transform-scale-x { duration: 350ms; easing: ease-out; }
+            animate transform-scale-y { duration: 350ms; easing: ease-out; }
+        }
+    }
+    @children
+}
+
+// HMCL ImageContainer: rounded, clipped image at a fixed size.
+export component ImageContainer {
+    in property <image> source;
+    in property <length> container-size: 32px;
+    in property <length> corner-radius: Theme.radius-6;
+
+    width: container-size;
+    height: container-size;
+
+    Rectangle {
+        width: parent.width;
+        height: parent.height;
+        border-radius: root.corner-radius;
+        clip: true;
+        background: transparent;
+        Image {
+            width: parent.width;
+            height: parent.height;
+            source: root.source;
+            image-fit: contain;
+        }
+    }
+}
+
+// Instance icon chosen from the instance icon set (HMCL GameInstanceIconType).
+export component InstanceIcon {
+    in property <string> name: "grass";
+    in property <length> container-size: 32px;
+    in property <length> corner-radius: Theme.radius-6;
+
+    width: container-size;
+    height: container-size;
+
+    Rectangle {
+        width: parent.width;
+        height: parent.height;
+        border-radius: root.corner-radius;
+        clip: true;
+        if root.name == "chest": Image { width: parent.width; height: parent.height; source: @image-url("../assets/instances/chest.png"); image-fit: contain; }
+        if root.name == "chicken": Image { width: parent.width; height: parent.height; source: @image-url("../assets/instances/chicken.png"); image-fit: contain; }
+        if root.name == "command": Image { width: parent.width; height: parent.height; source: @image-url("../assets/instances/command.png"); image-fit: contain; }
+        if root.name == "april_fools": Image { width: parent.width; height: parent.height; source: @image-url("../assets/instances/april_fools.png"); image-fit: contain; }
+        if root.name == "optifine": Image { width: parent.width; height: parent.height; source: @image-url("../assets/instances/optifine.png"); image-fit: contain; }
+        if root.name == "craft_table": Image { width: parent.width; height: parent.height; source: @image-url("../assets/instances/craft_table.png"); image-fit: contain; }
+        if root.name == "fabric": Image { width: parent.width; height: parent.height; source: @image-url("../assets/instances/fabric.png"); image-fit: contain; }
+        if root.name == "legacyfabric": Image { width: parent.width; height: parent.height; source: @image-url("../assets/instances/legacyfabric.png"); image-fit: contain; }
+        if root.name == "forge": Image { width: parent.width; height: parent.height; source: @image-url("../assets/instances/forge.png"); image-fit: contain; }
+        if root.name == "cleanroom": Image { width: parent.width; height: parent.height; source: @image-url("../assets/instances/cleanroom.png"); image-fit: contain; }
+        if root.name == "neoforge": Image { width: parent.width; height: parent.height; source: @image-url("../assets/instances/neoforge.png"); image-fit: contain; }
+        if root.name == "furnace": Image { width: parent.width; height: parent.height; source: @image-url("../assets/instances/furnace.png"); image-fit: contain; }
+        if root.name == "quilt": Image { width: parent.width; height: parent.height; source: @image-url("../assets/instances/quilt.png"); image-fit: contain; }
+        if root.name == "grass" || root.name == "": Image { width: parent.width; height: parent.height; source: @image-url("../assets/instances/grass.png"); image-fit: contain; }
+    }
+}
+
+// HMCL TwoLineListItem: title (15px), subtitle (12px), optional tag.
+export component TwoLineListItem {
+    in property <string> title;
+    in property <string> subtitle: "";
+    in property <string> tag: "";
+    in property <bool> selected: false;
+    in property <length> title-size: Theme.font-size-15;
+    in property <int> title-weight: 400;
+
+    vertical-stretch: 0;
+
+    VerticalLayout {
+        spacing: Theme.space-2;
+        alignment: center;
+        HorizontalLayout {
+            spacing: Theme.space-4;
+            Text {
+                text: root.title;
+                color: root.selected ? Theme.on-secondary-container : Theme.on-surface;
+                font-size: root.title-size;
+                font-weight: root.title-weight;
+                overflow: elide;
+                vertical-alignment: center;
+            }
+            if root.tag != "": Rectangle {
+                background: Theme.secondary-container;
+                border-radius: Theme.radius-2;
+                height: 18px;
+                width: tag-text.preferred-width + Theme.space-4;
+                Text {
+                    x: Theme.space-2;
+                    text: root.tag;
+                    color: Theme.on-secondary-container;
+                    font-size: Theme.font-size-12;
+                    vertical-alignment: center;
+                    height: parent.height;
+                }
+                tag-text := Text {
+                    text: root.tag;
+                    font-size: Theme.font-size-12;
+                    visible: false;
+                }
+            }
+        }
+        if root.subtitle != "": Text {
+            text: root.subtitle;
+            color: Theme.on-surface-variant;
+            font-size: Theme.font-size-12;
+            overflow: elide;
+        }
+    }
+}
+
+// HMCL ClassTitle: category header, 12px, padding 8/16, 1px bottom rule.
+export component ClassTitle inherits Rectangle {
+    in property <string> title;
+    height: 34px;
+    background: transparent;
+    Text {
+        x: Theme.space-16;
+        y: Theme.space-8;
+        text: root.title;
+        color: Theme.on-surface;
+        font-size: Theme.font-size-12;
+    }
+    Rectangle {
+        x: 0;
+        y: parent.height - 1px;
+        width: parent.width;
+        height: 1px;
+        background: Theme.on-surface-variant;
+    }
+}
+
+// HMCL Card: radius 4, padding 8, depth-1 shadow.
+export component Card inherits Rectangle {
+    in property <length> card-padding: Theme.space-8;
+    in property <length> corner-radius: Theme.radius-4;
+    background: Theme.surface-container-low-transparent-80;
+    border-radius: corner-radius;
+    @children
+}
+
+// HMCL .toggle-icon4: 30px round icon button.
+export component IconButton inherits Rectangle {
+    in property <string> icon;
+    in property <length> button-size: 30px;
+    in property <length> icon-size: 20px;
+    in property <color> tint: Theme.on-surface-variant;
+    callback clicked();
+
+    width: button-size;
+    height: button-size;
+    border-radius: self.width / 2;
+    background: ta.pressed
+        ? Theme.on-surface.with-alpha(0.12)
+        : (ta.has-hover ? Theme.on-surface.with-alpha(0.04) : transparent);
+    animate background { duration: Theme.motion-short4; }
+
+    Icon {
+        x: (parent.width - icon-size) / 2;
+        y: (parent.height - icon-size) / 2;
+        icon-size: root.icon-size;
+        name: root.icon;
+        tint: root.tint;
+    }
+    ta := TouchArea {
+        clicked => { root.clicked(); }
+    }
+}
+
+// Flat text button styled as HMCL .jfx-button-border.
+export component BorderButton inherits Rectangle {
+    in property <string> label;
+    in property <bool> enabled: true;
+    callback clicked();
+
+    height: 36px;
+    width: label-text.preferred-width + Theme.space-24;
+    border-radius: Theme.radius-5;
+    border-width: 1px;
+    border-color: Theme.outline;
+    background: transparent;
+    opacity: enabled ? 1 : 0.4;
+
+    label-text := Text {
+        text: root.label;
+        color: Theme.primary;
+        font-size: Theme.font-size-14;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        width: parent.width;
+        height: parent.height;
+    }
+    ta := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.clicked(); }
+    }
+    Rectangle {
+        width: parent.width;
+        height: parent.height;
+        border-radius: parent.border-radius;
+        background: ta.pressed ? Theme.on-surface.with-alpha(0.12) : (ta.has-hover ? Theme.on-surface.with-alpha(0.04) : transparent);
+        animate background { duration: Theme.motion-short4; }
+    }
+}
+
+// Raised primary button styled as HMCL .jfx-button-raised.
+export component RaisedButton inherits Rectangle {
+    in property <string> label;
+    in property <bool> enabled: true;
+    callback clicked();
+
+    height: 36px;
+    width: label-text.preferred-width + Theme.space-24;
+    border-radius: Theme.radius-4;
+    background: Theme.primary;
+    opacity: enabled ? 1 : 0.4;
+
+    label-text := Text {
+        text: root.label;
+        color: Theme.on-primary;
+        font-size: Theme.font-size-14;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        width: parent.width;
+        height: parent.height;
+    }
+    ta := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.clicked(); }
+    }
+    Rectangle {
+        width: parent.width;
+        height: parent.height;
+        border-radius: parent.border-radius;
+        background: ta.pressed ? Theme.on-primary.with-alpha(0.16) : transparent;
+        animate background { duration: Theme.motion-short4; }
+    }
+}
+
+// Page heading, mirrors HMCL page titles.
+export component PageTitle inherits Text {
+    in property <string> label;
+    text: label;
+    color: Theme.on-surface;
+    font-size: Theme.font-size-22;
+    font-weight: 700;
+    height: 38px;
+    vertical-alignment: center;
+}
+
+// Generic action button keeping the original HDSL page API.
+export component ActionButton inherits Rectangle {
+    in property <string> label;
+    in property <bool> primary: false;
+    in property <bool> enabled: true;
+    callback clicked();
+    height: 34px;
+    border-radius: Theme.radius-4;
+    border-width: primary ? 0px : 1px;
+    border-color: Theme.outline;
+    background: primary ? Theme.primary : transparent;
+    opacity: enabled ? 1 : 0.4;
+    Text {
+        text: root.label;
+        color: primary ? Theme.on-primary : Theme.primary;
+        font-size: Theme.font-size-14;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    ta := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.clicked(); }
+    }
+    Rectangle {
+        width: parent.width;
+        height: parent.height;
+        border-radius: parent.border-radius;
+        background: ta.pressed ? Theme.on-surface.with-alpha(0.12) : (ta.has-hover ? Theme.on-surface.with-alpha(0.04) : transparent);
+        animate background { duration: Theme.motion-short4; }
+    }
+}
+
+// HMCL .jfx-tool-bar-button: 37px tall, radius 5, transparent.
+export component ToolbarButton inherits Rectangle {
+    in property <string> icon;
+    in property <string> label: "";
+    callback clicked();
+    height: 37px;
+    width: label == "" ? 37px : content.preferred-width + Theme.space-16;
+    border-radius: Theme.radius-5;
+    background: ta.pressed
+        ? Theme.on-surface.with-alpha(0.12)
+        : (ta.has-hover ? Theme.on-surface.with-alpha(0.04) : transparent);
+    animate background { duration: Theme.motion-short4; }
+    content := HorizontalLayout {
+        x: (parent.width - self.preferred-width) / 2;
+        y: 0;
+        height: parent.height;
+        spacing: Theme.space-6;
+        alignment: center;
+        Icon { icon-size: 20px; name: root.icon; tint: Theme.on-surface; }
+        if root.label != "": Text {
+            text: root.label;
+            color: Theme.on-surface;
+            font-size: Theme.font-size-14;
+            vertical-alignment: center;
+        }
+    }
+    ta := TouchArea { clicked => { root.clicked(); } }
+}
+
+// Styled wrapper around the standard text field.
+export component TextField inherits Rectangle {
+    in property <string> placeholder: "";
+    in-out property <string> text <=> input.text;
+    in property <bool> enabled: true;
+    height: 36px;
+    border-radius: Theme.radius-4;
+    background: Theme.surface-container-highest;
+    opacity: enabled ? 1 : 0.5;
+    input := LineEdit {
+        x: Theme.space-8;
+        y: 0;
+        width: parent.width - Theme.space-16;
+        height: parent.height;
+        placeholder-text: root.placeholder;
+        enabled: root.enabled;
+    }
+}
+
+export component CheckBox inherits StdCheckBox {
+    height: 30px;
+}
+
+// HMCL SpinnerPane: centered spinner while loading.
+export component SpinnerPane inherits Rectangle {
+    in property <bool> spinning: true;
+    in property <string> message: "";
+    background: transparent;
+    VerticalLayout {
+        alignment: center;
+        spacing: Theme.space-10;
+        Icon {
+            x: (parent.width - 28px) / 2;
+            icon-size: 28px;
+            name: "refresh";
+            tint: Theme.primary-container;
+            rotation-angle: root.spinning ? 360deg : 0deg;
+        }
+        if root.message != "": Text {
+            text: root.message;
+            color: Theme.on-surface-variant;
+            font-size: Theme.font-size-13;
+            horizontal-alignment: center;
+        }
+    }
+}

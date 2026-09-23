@@ -1,0 +1,290 @@
+﻿// Home page. HMCL counterpart: ui/main/MainPage.
+// Layout facts from HMCL MainPage.java and assets/css/root.css
+// (.launch-pane / .bubble / .announcement / .card).
+import { Theme } from "../theme.slint";
+import { Icon } from "../icons.slint";
+import { ActionButton } from "../components/common.slint";
+
+export component HomePage inherits Rectangle {
+    in-out property <int> page;
+    in property <string> active-instance-name;
+    in property <string> active-instance-version;
+    in property <string> active-instance-port;
+    in property <bool> update-available: false;
+    callback launch-instance();
+    callback stop-instance();
+    callback open-upstream-report();
+
+    property <bool> update-dismissed: false;
+    property <bool> show-update: root.update-available && !root.update-dismissed;
+    property <bool> show-announcement: true;
+    property <length> page-padding: 20px;
+    // The app uses "未选择实例" as its no-selection sentinel.
+    property <bool> has-instance: active-instance-name != "" && active-instance-name != "未选择实例";
+    property <color> card-shadow: #00000042;
+
+    background: transparent;
+
+    // Top area: announcement card and current-instance summary.
+    VerticalLayout {
+        x: root.page-padding;
+        y: root.page-padding;
+        width: parent.width - root.page-padding * 2;
+        spacing: Theme.space-16;
+        alignment: start;
+
+        // Announcement card (.card + .announcement).
+        if root.show-announcement: Rectangle {
+            background: Theme.surface-container-low-transparent-80;
+            border-radius: Theme.radius-4;
+            drop-shadow-color: root.card-shadow;
+            drop-shadow-offset-x: -1px;
+            drop-shadow-offset-y: 2px;
+            drop-shadow-blur: 10px;
+
+            VerticalLayout {
+                padding: Theme.space-16;
+                spacing: Theme.space-16;
+
+                HorizontalLayout {
+                    Text {
+                        text: "上游版本公告 · 2026-09-23";
+                        color: Theme.on-surface;
+                        font-size: Theme.font-size-14;
+                        font-weight: 700;
+                        vertical-alignment: center;
+                    }
+                    Rectangle { horizontal-stretch: 1; background: transparent; }
+                    announcement-close := Rectangle {
+                        width: 20px;
+                        height: 20px;
+                        border-radius: 10px;
+                        background: close-ta.pressed
+                            ? Theme.primary.with-alpha(0.12)
+                            : (close-ta.has-hover ? Theme.primary.with-alpha(0.04) : transparent);
+                        animate background { duration: Theme.motion-short4; }
+                        Icon {
+                            x: (parent.width - 20px) / 2;
+                            y: (parent.height - 20px) / 2;
+                            name: "close";
+                            icon-size: 20px;
+                            tint: Theme.on-surface;
+                        }
+                        close-ta := TouchArea { clicked => { root.show-announcement = false; } }
+                    }
+                }
+
+                Text {
+                    text: "社区报告：0.1.5-rc.2 在 Windows 上启动 Web 可能失败，本地已复现 HMR 错误。";
+                    color: Theme.on-surface;
+                    font-size: Theme.font-size-13;
+                    wrap: word-wrap;
+                }
+
+                HorizontalLayout {
+                    ActionButton {
+                        width: 125px;
+                        label: "查看原始报告";
+                        clicked => { root.open-upstream-report(); }
+                    }
+                    Rectangle { horizontal-stretch: 1; background: transparent; }
+                }
+            }
+        }
+
+        // Current-instance summary.
+        Rectangle {
+            background: Theme.surface-container-low-transparent-80;
+            border-radius: Theme.radius-4;
+            drop-shadow-color: root.card-shadow;
+            drop-shadow-offset-x: -1px;
+            drop-shadow-offset-y: 2px;
+            drop-shadow-blur: 10px;
+
+            VerticalLayout {
+                padding: Theme.space-16;
+                spacing: Theme.space-8;
+
+                Text {
+                    text: "当前实例";
+                    color: Theme.on-surface;
+                    font-size: Theme.font-size-16;
+                    font-weight: 700;
+                }
+                if root.has-instance: Text {
+                    text: root.active-instance-name;
+                    color: Theme.on-surface;
+                    font-size: Theme.font-size-15;
+                    overflow: elide;
+                }
+                if root.has-instance: Text {
+                    text: root.active-instance-version + "  ·  Web 端口 " + root.active-instance-port;
+                    color: Theme.on-surface-variant;
+                    font-size: Theme.font-size-13;
+                    overflow: elide;
+                }
+                if !root.has-instance: Text {
+                    text: "未选择实例";
+                    color: Theme.on-surface-variant;
+                    font-size: Theme.font-size-13;
+                }
+
+                HorizontalLayout {
+                    spacing: Theme.space-10;
+                    ActionButton {
+                        width: 110px;
+                        label: "启动";
+                        primary: true;
+                        clicked => { root.launch-instance(); }
+                    }
+                    ActionButton {
+                        width: 110px;
+                        label: "停止";
+                        clicked => { root.stop-instance(); }
+                    }
+                    Rectangle { horizontal-stretch: 1; background: transparent; }
+                }
+            }
+        }
+    }
+
+    // Update bubble (.bubble), 230x55, top-right; hidden until a version is known.
+    if root.show-update: Rectangle {
+        x: root.width - root.page-padding - 230px;
+        y: root.page-padding;
+        width: 230px;
+        height: 55px;
+        background: Theme.inverse-surface-transparent-80;
+        border-radius: Theme.radius-2;
+
+        HorizontalLayout {
+            x: 16px;
+            y: 9px;
+            height: parent.height - 18px;
+            spacing: 12px;
+            alignment: center;
+            Icon {
+                icon-size: 20px;
+                name: "update";
+                tint: Theme.inverse-on-surface;
+            }
+            VerticalLayout {
+                alignment: center;
+                spacing: Theme.space-2;
+                Text {
+                    text: "发现更新";
+                    color: Theme.inverse-on-surface;
+                    font-size: Theme.font-size-15;
+                    overflow: elide;
+                }
+                Text {
+                    text: "点击此处进行升级";
+                    color: Theme.inverse-on-surface;
+                    font-size: Theme.font-size-12;
+                    overflow: elide;
+                }
+            }
+        }
+
+        Rectangle {
+            x: parent.width - 15px - 5px;
+            y: 5px;
+            width: 15px;
+            height: 15px;
+            Icon {
+                width: parent.width;
+                height: parent.height;
+                name: "close";
+                icon-size: 15px;
+                tint: Theme.inverse-on-surface;
+            }
+            bubble-close-ta := TouchArea { clicked => { root.update-dismissed = true; } }
+        }
+    }
+
+    // Launch pane (.launch-pane), 230x57, bottom-right.
+    Rectangle {
+        x: root.width - root.page-padding - 230px;
+        y: root.height - root.page-padding - 57px;
+        width: 230px;
+        height: 57px;
+        background: transparent;
+
+        // Launch button: 200x55, radius 4 0 0 4, 3px right divider.
+        Rectangle {
+            x: 0;
+            y: 1px;
+            width: 200px;
+            height: 55px;
+            background: Theme.primary-container;
+            border-top-left-radius: Theme.radius-4;
+            border-bottom-left-radius: Theme.radius-4;
+
+            Rectangle {
+                width: parent.width;
+                height: parent.height;
+                background: launch-ta.pressed
+                    ? Theme.on-primary-container.with-alpha(0.12)
+                    : (launch-ta.has-hover ? Theme.on-primary-container.with-alpha(0.04) : transparent);
+                animate background { duration: Theme.motion-short4; }
+            }
+
+            VerticalLayout {
+                alignment: center;
+                padding-left: Theme.space-8;
+                padding-right: Theme.space-8;
+                spacing: Theme.space-2;
+                Text {
+                    text: root.has-instance ? "启动游戏" : "开始游戏";
+                    color: Theme.on-primary-container;
+                    font-size: Theme.font-size-16;
+                    horizontal-alignment: center;
+                    overflow: elide;
+                }
+                if root.has-instance: Text {
+                    text: root.active-instance-name;
+                    color: Theme.on-primary-container;
+                    font-size: Theme.font-size-12;
+                    horizontal-alignment: center;
+                    overflow: elide;
+                }
+            }
+
+            launch-ta := TouchArea { clicked => { root.launch-instance(); } }
+        }
+
+        // Divider fades at both ends (root.css .launch-button border).
+        Rectangle {
+            x: 197px;
+            y: 1px;
+            width: 3px;
+            height: 55px;
+            background: @linear-gradient(180deg,
+                transparent 0%,
+                transparent 20%,
+                Theme.on-surface-variant 20%,
+                Theme.on-surface-variant 80%,
+                transparent 80%,
+                transparent 100%);
+        }
+
+        // Menu button: 27x55, radius 0 4 4 0, arrow-drop-up 30px.
+        Rectangle {
+            x: 200px;
+            y: 1px;
+            width: 27px;
+            height: 55px;
+            background: Theme.primary-container;
+            border-top-right-radius: Theme.radius-4;
+            border-bottom-right-radius: Theme.radius-4;
+
+            Icon {
+                x: (parent.width - 30px) / 2;
+                y: (parent.height - 30px) / 2;
+                name: "arrow-drop-up";
+                icon-size: 30px;
+                tint: Theme.on-primary-container;
+            }
+        }
+    }
+}

@@ -1,0 +1,27 @@
+// Shared data models between the app shell and pages.
+export struct InstanceRow {
+    id: string,
+    name: string,
+    version: string,
+    workspace: string,
+    port: string,
+    icon: string,
+}
+
+export struct LogLine {
+    text: string,
+    level: int,
+}
+
+export struct PluginRow {
+    name: string,
+    package: string,
+    version: string,
+    summary: string,
+    repo: string,
+}
+
+export struct VersionRow {
+    version: string,
+    label: string,
+}

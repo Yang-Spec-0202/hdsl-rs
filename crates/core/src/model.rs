@@ -14,6 +14,8 @@ pub struct Instance {
     pub workspace: PathBuf,
     pub port: u16,
     pub created_at: chrono::DateTime<chrono::Utc>,
+    #[serde(default)]
+    pub icon: Option<String>,
 }
 
 impl Instance {
@@ -38,7 +40,12 @@ impl Instance {
             workspace: workspace.canonicalize()?,
             port,
             created_at: chrono::Utc::now(),
+            icon: None,
         })
+    }
+    /// Returns the icon asset base name, defaulting to the grass icon.
+    pub fn icon_name(&self) -> &str {
+        self.icon.as_deref().unwrap_or("grass")
     }
     pub fn dir(&self, paths: &AppPaths) -> Result<PathBuf> {
         paths.instance(&self.id.to_string())

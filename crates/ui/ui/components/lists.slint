@@ -1,0 +1,79 @@
+// Settings group containers mirroring HMCL ComponentList / OptionsList.
+import { Theme } from "../theme.slint";
+
+export component ComponentList inherits Rectangle {
+    in property <string> title: "";
+    in property <bool> flat: false;
+    background: transparent;
+
+    VerticalLayout {
+        spacing: Theme.space-4;
+        if root.title != "": HorizontalLayout {
+            height: 30px;
+            padding-left: Theme.space-16;
+            alignment: start;
+            Text {
+                text: root.title;
+                color: Theme.on-surface;
+                font-size: Theme.font-size-14;
+                vertical-alignment: center;
+            }
+        }
+        Rectangle {
+            background: root.flat ? transparent : Theme.surface-container-lowest;
+            border-radius: Theme.radius-4;
+            drop-shadow-color: root.flat ? transparent : #0000001f;
+            drop-shadow-blur: 5px;
+            drop-shadow-offset-y: 1px;
+            VerticalLayout {
+                spacing: 0;
+                @children
+            }
+        }
+    }
+}
+
+export component OptionsList inherits ComponentList {
+    flat: true;
+}
+
+export component ComponentSublist inherits Rectangle {
+    in property <string> title;
+    in property <string> subtitle: "";
+    in-out property <bool> expanded: false;
+    background: transparent;
+
+    VerticalLayout {
+        spacing: 0;
+        Rectangle {
+            height: root.subtitle == "" ? 48px : 64px;
+            background: Theme.surface-container;
+            border-radius: Theme.radius-4;
+            Rectangle {
+                background: ta.has-hover ? Theme.on-surface.with-alpha(0.04) : transparent;
+                border-radius: Theme.radius-4;
+            }
+            VerticalLayout {
+                x: Theme.space-16;
+                y: 0;
+                width: parent.width - Theme.space-16 * 2;
+                height: parent.height;
+                alignment: center;
+                spacing: Theme.space-2;
+                Text { text: root.title; color: Theme.on-surface; font-size: Theme.font-size-14; }
+                if root.subtitle != "": Text { text: root.subtitle; color: Theme.on-surface-variant; font-size: Theme.font-size-11; }
+            }
+            ta := TouchArea {
+                clicked => { root.expanded = !root.expanded; }
+            }
+        }
+        Rectangle {
+            height: root.expanded ? inner.preferred-height : 0px;
+            clip: true;
+            inner := VerticalLayout {
+                spacing: 0;
+                @children
+            }
+        }
+    }
+}

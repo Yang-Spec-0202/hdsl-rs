@@ -1,0 +1,122 @@
+// Design tokens ported from HMCL's Material 3 palette (assets/css/blue.css)
+// and root.css metrics. See docs/developer/src/ui-parity.md.
+export global Theme {
+    // --- Color roles (default "blue" theme) ---
+    out property <color> primary: #4352a5;
+    out property <color> on-primary: #ffffff;
+    out property <color> primary-container: #5c6bc0;
+    out property <color> on-primary-container: #f8f6ff;
+    out property <color> primary-fixed: #dee0ff;
+    out property <color> primary-fixed-dim: #bac3ff;
+    out property <color> on-primary-fixed: #00105b;
+    out property <color> on-primary-fixed-variant: #2f3f92;
+    out property <color> secondary: #575c7f;
+    out property <color> on-secondary: #ffffff;
+    out property <color> secondary-container: #d0d5fd;
+    out property <color> on-secondary-container: #565b7d;
+    out property <color> secondary-fixed: #dee0ff;
+    out property <color> secondary-fixed-dim: #bfc4ec;
+    out property <color> on-secondary-fixed: #141938;
+    out property <color> on-secondary-fixed-variant: #3f4566;
+    out property <color> tertiary: #775200;
+    out property <color> on-tertiary: #ffffff;
+    out property <color> tertiary-container: #976900;
+    out property <color> on-tertiary-container: #fff6ee;
+    out property <color> tertiary-fixed: #ffdeac;
+    out property <color> tertiary-fixed-dim: #f6bd58;
+    out property <color> on-tertiary-fixed: #281900;
+    out property <color> on-tertiary-fixed-variant: #5f4100;
+    out property <color> error: #ba1a1a;
+    out property <color> on-error: #ffffff;
+    out property <color> error-container: #ffdad6;
+    out property <color> on-error-container: #93000a;
+    out property <color> surface: #fbf8ff;
+    out property <color> on-surface: #1b1b21;
+    out property <color> surface-dim: #dbd9e1;
+    out property <color> surface-bright: #fbf8ff;
+    out property <color> surface-container-lowest: #ffffff;
+    out property <color> surface-container-low: #f5f2fa;
+    out property <color> surface-container: #efedf5;
+    out property <color> surface-container-high: #e9e7ef;
+    out property <color> surface-container-highest: #e3e1e9;
+    out property <color> surface-variant: #e2e1ef;
+    out property <color> on-surface-variant: #454651;
+    out property <color> background: #fbf8ff;
+    out property <color> on-background: #1b1b21;
+    out property <color> outline: #767683;
+    out property <color> outline-variant: #c6c5d3;
+    out property <color> shadow: #000000;
+    out property <color> scrim: #000000;
+    out property <color> inverse-surface: #303036;
+    out property <color> inverse-on-surface: #f2eff7;
+    out property <color> inverse-primary: #bac3ff;
+    out property <color> surface-tint: #4858ab;
+    out property <color> primary-seed: #5c6bc0;
+
+    // --- Transparent variants ---
+    out property <color> primary-transparent-50: #4352a580;
+    out property <color> primary-transparent-80: #4352a5cc;
+    out property <color> secondary-container-transparent-50: #d0d5fd80;
+    out property <color> secondary-container-transparent-80: #d0d5fdcc;
+    out property <color> surface-transparent-50: #fbf8ff80;
+    out property <color> surface-transparent-80: #fbf8ffcc;
+    out property <color> on-surface-variant-transparent-38: #45465161;
+    out property <color> surface-container-low-transparent-80: #f5f2facc;
+    out property <color> inverse-surface-transparent-80: #303036cc;
+
+    // --- Typography (root.css) ---
+    out property <length> font-size-10: 10px;
+    out property <length> font-size-11: 11px;
+    out property <length> font-size-12: 12px;
+    out property <length> font-size-13: 13px;
+    out property <length> font-size-14: 14px;
+    out property <length> font-size-15: 15px;
+    out property <length> font-size-16: 16px;
+    out property <length> font-size-18: 18px;
+    out property <length> font-size-20: 20px;
+    out property <length> font-size-22: 22px;
+
+    // --- Border radius ---
+    out property <length> radius-2: 2px;
+    out property <length> radius-3: 3px;
+    out property <length> radius-4: 4px;
+    out property <length> radius-5: 5px;
+    out property <length> radius-6: 6px;
+    out property <length> radius-20: 20px;
+    out property <length> radius-25: 25px;
+    out property <length> radius-50: 50px;
+
+    // --- Spacing ---
+    out property <length> space-2: 2px;
+    out property <length> space-4: 4px;
+    out property <length> space-5: 5px;
+    out property <length> space-6: 6px;
+    out property <length> space-8: 8px;
+    out property <length> space-10: 10px;
+    out property <length> space-12: 12px;
+    out property <length> space-16: 16px;
+    out property <length> space-20: 20px;
+    out property <length> space-22: 22px;
+    out property <length> space-24: 24px;
+
+    // --- Layout constants ---
+    out property <length> sidebar-width: 200px;
+    out property <length> titlebar-height: 40px;
+    out property <length> window-radius: 8px;
+    out property <length> window-shadow-inset: 8px;
+
+    // --- Motion (Motion.java). Slint has no custom cubic-bezier, so the
+    // HMCL EASE family is approximated with the built-in easings. ---
+    out property <duration> motion-short1: 50ms;
+    out property <duration> motion-short2: 100ms;
+    out property <duration> motion-short3: 150ms;
+    out property <duration> motion-short4: 200ms;
+    out property <duration> motion-medium1: 250ms;
+    out property <duration> motion-medium2: 300ms;
+    out property <duration> motion-medium3: 350ms;
+    out property <duration> motion-medium4: 400ms;
+    out property <duration> motion-long1: 450ms;
+    out property <duration> motion-long2: 500ms;
+    out property <duration> motion-long3: 550ms;
+    out property <duration> motion-long4: 600ms;
+}

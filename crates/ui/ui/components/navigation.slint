@@ -1,0 +1,53 @@
+// Sidebar navigation mirroring HMCL's AdvancedListBox / AdvancedListItem.
+import { Theme } from "../theme.slint";
+import { Icon } from "../icons.slint";
+import { RippleArea, TwoLineListItem } from "common.slint";
+
+export component AdvancedListItem inherits RippleArea {
+    in property <string> title;
+    in property <string> subtitle: "";
+    in property <string> icon: "";
+    in property <image> avatar;
+    in property <bool> show-avatar: false;
+    in property <bool> selected: false;
+    in property <length> icon-size: 20px;
+
+    ripple: Theme.on-secondary-container;
+    height: subtitle == "" ? 40px : 52px;
+    background: selected ? Theme.secondary-container-transparent-50 : transparent;
+
+    if show-avatar: Image {
+        x: Theme.space-16;
+        y: (parent.height - 32px) / 2;
+        width: 32px;
+        height: 32px;
+        source: root.avatar;
+        image-fit: cover;
+    }
+    if !show-avatar && icon != "": Icon {
+        x: Theme.space-16 + Theme.space-6;
+        y: (parent.height - icon-size) / 2;
+        icon-size: root.icon-size;
+        name: root.icon;
+        tint: selected ? Theme.on-secondary-container : Theme.on-surface-variant;
+    }
+    TwoLineListItem {
+        x: 58px;
+        y: 0;
+        width: parent.width - 58px - Theme.space-16;
+        height: parent.height;
+        title: root.title;
+        subtitle: root.subtitle;
+        selected: root.selected;
+        title-weight: root.selected ? 700 : 400;
+    }
+}
+
+export component AdvancedListBox {
+    in property <length> list-padding-top: Theme.space-12;
+    VerticalLayout {
+        padding-top: list-padding-top;
+        spacing: 0;
+        @children
+    }
+}

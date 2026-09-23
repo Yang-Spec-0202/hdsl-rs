@@ -1,0 +1,133 @@
+// Modal dialog mirroring HMCL JFXDialogPane / JFXDialogLayout, plus a
+// bottom SnackBar mirroring HMCL's JFXSnackbarLayout.
+import { Theme } from "../theme.slint";
+import { Icon } from "../icons.slint";
+import { BorderButton, RaisedButton } from "common.slint";
+
+// HMCL .jfx-dialog-layout: radius 4, padding 24 24 16 24, heading 20 bold,
+// body 14, actions right-aligned with 10px spacing.
+export component DialogPane inherits Rectangle {
+    in property <string> title;
+    in property <string> message: "";
+    in property <string> accept-label: "确定";
+    in property <string> reject-label: "取消";
+    in property <bool> show-accept: true;
+    in property <bool> show-reject: true;
+    callback accepted();
+    callback rejected();
+
+    background: Theme.scrim.with-alpha(0.6);
+
+    Rectangle {
+        width: 420px;
+        height: body.preferred-height;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        background: Theme.surface-container-high;
+        border-radius: Theme.radius-4;
+        drop-shadow-color: Theme.shadow.with-alpha(0.25);
+        drop-shadow-blur: 12px;
+
+        body := VerticalLayout {
+            padding-left: Theme.space-24;
+            padding-right: Theme.space-24;
+            padding-top: Theme.space-24;
+            padding-bottom: Theme.space-16;
+            spacing: Theme.space-12;
+            Text {
+                text: root.title;
+                color: Theme.on-surface;
+                font-size: Theme.font-size-20;
+                font-weight: 700;
+                horizontal-alignment: left;
+            }
+            if root.message != "": Text {
+                text: root.message;
+                color: Theme.on-surface;
+                font-size: Theme.font-size-14;
+                wrap: word-wrap;
+                horizontal-alignment: left;
+            }
+            @children
+            HorizontalLayout {
+                spacing: Theme.space-10;
+                alignment: right;
+                if root.show-reject: BorderButton { label: root.reject-label; clicked => { root.rejected(); } }
+                if root.show-accept: RaisedButton { label: root.accept-label; clicked => { root.accepted(); } }
+            }
+        }
+    }
+}
+
+// HMCL .jfx-snackbar-*: inverse-surface bar, inverse-on-surface toast,
+// inverse-primary action, radius 4, padding 12/16, height 48.
+export component SnackBar inherits Rectangle {
+    in property <string> text;
+    in property <string> action-label: "";
+    callback action-clicked();
+    callback dismissed();
+
+    height: 48px;
+    border-radius: Theme.radius-4;
+    background: Theme.inverse-surface;
+    drop-shadow-color: Theme.shadow.with-alpha(0.25);
+    drop-shadow-blur: 8px;
+
+    HorizontalLayout {
+        padding-left: Theme.space-16;
+        padding-right: Theme.space-16;
+        padding-top: Theme.space-12;
+        padding-bottom: Theme.space-12;
+        spacing: Theme.space-12;
+        alignment: center;
+        Text {
+            text: root.text;
+            color: Theme.inverse-on-surface;
+            font-size: Theme.font-size-14;
+            vertical-alignment: center;
+            horizontal-stretch: 1;
+            overflow: elide;
+        }
+        if root.action-label != "": Rectangle {
+            width: action-text.preferred-width + Theme.space-16;
+            height: 36px;
+            border-radius: Theme.radius-4;
+            background: action-ta.pressed
+                ? Theme.inverse-primary.with-alpha(0.16)
+                : (action-ta.has-hover ? Theme.inverse-primary.with-alpha(0.08) : transparent);
+            animate background { duration: Theme.motion-short4; }
+            action-text := Text {
+                text: root.action-label;
+                color: Theme.inverse-primary;
+                font-size: Theme.font-size-14;
+                font-weight: 600;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+                width: parent.width;
+                height: parent.height;
+            }
+            action-ta := TouchArea {
+                clicked => { root.action-clicked(); }
+            }
+        }
+        Rectangle {
+            width: 30px;
+            height: 30px;
+            border-radius: self.width / 2;
+            background: close-ta.pressed
+                ? Theme.inverse-on-surface.with-alpha(0.16)
+                : (close-ta.has-hover ? Theme.inverse-on-surface.with-alpha(0.08) : transparent);
+            animate background { duration: Theme.motion-short4; }
+            Icon {
+                x: (parent.width - 18px) / 2;
+                y: (parent.height - 18px) / 2;
+                icon-size: 18px;
+                name: "close";
+                tint: Theme.inverse-on-surface;
+            }
+            close-ta := TouchArea {
+                clicked => { root.dismissed(); }
+            }
+        }
+    }
+}
