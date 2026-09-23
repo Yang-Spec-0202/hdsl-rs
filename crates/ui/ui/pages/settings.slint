@@ -1,19 +1,667 @@
 ﻿// Settings page. HMCL counterpart: ui/main/LauncherSettingsPage.
-// Placeholder shell for S0b; tabs and rows are implemented in slice S5.
+// Slice S5: sidebar navigation plus eight tabs rebuilt on the HMCL layout.
+// The launcher never exposes Harness credentials, endpoints or model routing here.
+//
+// NOTE: the shared components/lines.slint and components/lists.slint cannot be imported
+// as-is: lines.slint's `LineRow` re-declares the inherited `interactive` property of
+// `RippleArea` ("Cannot override property 'interactive'"), and lists.slint's
+// `ComponentSublist` places `@children` inside a conditional ("The @children placeholder
+// cannot appear in a conditional element"). Slint 1.18 rejects both. To keep this slice
+// scoped to this single file, the LineComponent family and the ComponentList/OptionsList
+// containers are mirrored locally below and the page body uses the same names. Once those
+// shared files are fixed, delete the local blocks and restore the imports.
+import { ScrollView, Switch } from "std-widgets.slint";
 import { Theme } from "../theme.slint";
-import { PageTitle } from "../components/common.slint";
+import { Icon } from "../icons.slint";
+import { AdvancedListItem, AdvancedListBox } from "../components/navigation.slint";
+import { ClassTitle, ImageContainer, RippleArea } from "../components/common.slint";
+
+// Settings group containers mirroring HMCL ComponentList / OptionsList.
+component ComponentList inherits Rectangle {
+    in property <string> title: "";
+    in property <bool> flat: false;
+    background: transparent;
+
+    VerticalLayout {
+        spacing: Theme.space-4;
+        if root.title != "": HorizontalLayout {
+            height: 30px;
+            padding-left: Theme.space-16;
+            alignment: start;
+            Text {
+                text: root.title;
+                color: Theme.on-surface;
+                font-size: Theme.font-size-14;
+                vertical-alignment: center;
+            }
+        }
+        Rectangle {
+            background: root.flat ? transparent : Theme.surface-container-lowest;
+            border-radius: Theme.radius-4;
+            drop-shadow-color: root.flat ? transparent : #0000001f;
+            drop-shadow-blur: 5px;
+            drop-shadow-offset-y: 1px;
+            VerticalLayout {
+                spacing: 0;
+                @children
+            }
+        }
+    }
+}
+
+component OptionsList inherits ComponentList {
+    flat: true;
+}
+
+// Base row: title (14px), optional subtitle (11px), trailing slot.
+component LineBase inherits RippleArea {
+    in property <string> title;
+    in property <string> subtitle: "";
+    in property <bool> enabled: true;
+    in property <length> row-height: root.subtitle == "" ? 48px : 64px;
+
+    ripple: Theme.on-surface-variant;
+    interactive: root.enabled;
+    height: root.row-height;
+    opacity: root.enabled ? 1 : 0.4;
+
+    VerticalLayout {
+        x: Theme.space-16;
+        y: 0;
+        width: parent.width - Theme.space-16 * 2;
+        height: parent.height;
+        alignment: center;
+        spacing: Theme.space-2;
+        Text {
+            text: root.title;
+            color: Theme.on-surface;
+            font-size: Theme.font-size-14;
+            overflow: elide;
+        }
+        if root.subtitle != "": Text {
+            text: root.subtitle;
+            color: Theme.on-surface-variant;
+            font-size: Theme.font-size-11;
+            wrap: word-wrap;
+        }
+    }
+    @children
+}
+
+// Clickable row with a trailing value/icon.
+component LineButton inherits LineBase {
+    in property <string> trailing: "";
+    in property <string> trailing-icon: "unfold-more";
+
+    interactive: true;
+
+    Text {
+        x: parent.width - Theme.space-16 - (root.trailing-icon != "" ? 28px : 0px) - self.width;
+        y: 0;
+        height: parent.height;
+        text: root.trailing;
+        color: Theme.on-surface-variant;
+        font-size: Theme.font-size-14;
+        vertical-alignment: center;
+    }
+    if root.trailing-icon != "": Icon {
+        x: parent.width - Theme.space-16 - 20px;
+        y: (parent.height - 20px) / 2;
+        icon-size: 20px;
+        name: root.trailing-icon;
+        tint: Theme.on-surface-variant;
+    }
+}
+
+// Row with a dropdown selector, mirrors HMCL LineSelectButton.
+component LineSelectButton inherits LineBase {
+    in property <[string]> options;
+    in-out property <int> selected-index: 0;
+
+    interactive: true;
+    clicked => {
+        if popup.is-open {
+            popup.close();
+        } else {
+            popup.show();
+        }
+    }
+
+    Text {
+        x: parent.width - Theme.space-16 - 24px - self.width;
+        y: 0;
+        height: parent.height;
+        text: root.selected-index >= 0 && root.selected-index < root.options.length ? root.options[root.selected-index] : "";
+        color: Theme.on-surface-variant;
+        font-size: Theme.font-size-14;
+        vertical-alignment: center;
+    }
+    Icon {
+        x: parent.width - Theme.space-16 - 20px;
+        y: (parent.height - 20px) / 2;
+        icon-size: 20px;
+        name: "unfold-more";
+        tint: Theme.on-surface-variant;
+    }
+    popup := PopupWindow {
+        x: root.absolute-position.x + root.width - 180px;
+        y: root.absolute-position.y + root.height;
+        width: 180px;
+        height: Math.min(root.options.length * 36px + 8px, 260px);
+        close-policy: close-on-click-outside;
+        Rectangle {
+            background: Theme.surface-container-low;
+            border-radius: Theme.radius-4;
+            drop-shadow-color: #00000040;
+            drop-shadow-blur: 8px;
+            VerticalLayout {
+                padding: Theme.space-4;
+                spacing: 0;
+                for option[index] in root.options: Rectangle {
+                    height: 36px;
+                    background: index == root.selected-index
+                        ? Theme.secondary-container
+                        : (ta.has-hover ? Theme.on-surface.with-alpha(0.06) : transparent);
+                    border-radius: Theme.radius-3;
+                    Text {
+                        x: Theme.space-12;
+                        text: option;
+                        color: Theme.on-surface;
+                        font-size: Theme.font-size-13;
+                        vertical-alignment: center;
+                        height: parent.height;
+                    }
+                    ta := TouchArea {
+                        clicked => {
+                            root.selected-index = index;
+                            popup.close();
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Row with a trailing toggle switch, mirrors HMCL LineToggleButton.
+component LineToggleButton inherits LineBase {
+    in property <string> trailing: "";
+    in-out property <bool> checked: false;
+
+    interactive: false;
+
+    Text {
+        x: parent.width - Theme.space-16 - 48px - 12px - self.width;
+        y: 0;
+        height: parent.height;
+        text: root.trailing;
+        color: Theme.on-surface-variant;
+        font-size: Theme.font-size-12;
+        vertical-alignment: center;
+    }
+    Switch {
+        x: parent.width - Theme.space-16 - 48px;
+        y: (parent.height - 24px) / 2;
+        width: 44px;
+        height: 24px;
+        checked: root.checked;
+        enabled: root.enabled;
+        toggled => { root.checked = self.checked; }
+    }
+}
+
+// Row with a read-only text value on the right.
+component LineTextPane inherits LineBase {
+    in property <string> value: "";
+
+    interactive: false;
+
+    Text {
+        x: parent.width - Theme.space-16 - self.width;
+        y: 0;
+        height: parent.height;
+        text: root.value;
+        color: Theme.on-surface;
+        font-size: Theme.font-size-14;
+        vertical-alignment: center;
+    }
+}
 
 export component SettingsPage inherits Rectangle {
     in-out property <int> page;
 
+    property <int> tab: 0;
+
+    // Local demo state; persistence is wired in a later slice.
+    property <int> isolation-index: 0;
+    property <int> window-type-index: 0;
+    property <bool> show-log: false;
+    property <int> update-channel-index: 0;
+    property <bool> preview-updates: false;
+    property <int> language-index: 0;
+    property <bool> disable-april-fools: false;
+    property <int> theme-mode-index: 0;
+    property <int> background-index: 0;
+    property <bool> titlebar-transparent: false;
+    property <bool> window-transparent: false;
+    property <bool> disable-animation: false;
+    property <int> version-list-source-index: 0;
+    property <int> download-source-index: 0;
+    property <int> addon-source-index: 0;
+
     background: transparent;
 
-    VerticalLayout {
-        padding: Theme.space-24;
-        spacing: Theme.space-12;
-        PageTitle { label: "设置"; }
-        Text { text: "设置项待补充。模型路由、API Key 与端点请在实例的 Harness 网页中管理。";
-            color: Theme.on-surface-variant; font-size: Theme.font-size-13; }
-        Rectangle { vertical-stretch: 1; background: transparent; }
+    HorizontalLayout {
+        spacing: 0;
+
+        // --- Left sidebar (HMCL AdvancedListBox, width 200) ---
+        Rectangle {
+            width: Theme.sidebar-width;
+            background: transparent;
+
+            AdvancedListBox {
+                x: 0;
+                y: 0;
+                width: parent.width;
+                height: parent.height;
+
+                ClassTitle { title: "设置"; }
+                AdvancedListItem {
+                    title: "全局设置";
+                    icon: "settings";
+                    selected: root.tab == 0;
+                    clicked => { root.tab = 0; }
+                }
+                AdvancedListItem {
+                    title: "环境管理";
+                    icon: "local-cafe";
+                    selected: root.tab == 1;
+                    clicked => { root.tab = 1; }
+                }
+
+                ClassTitle { title: "启动器"; }
+                AdvancedListItem {
+                    title: "通用";
+                    icon: "tune";
+                    selected: root.tab == 2;
+                    clicked => { root.tab = 2; }
+                }
+                AdvancedListItem {
+                    title: "外观";
+                    icon: "style";
+                    selected: root.tab == 3;
+                    clicked => { root.tab = 3; }
+                }
+                AdvancedListItem {
+                    title: "下载";
+                    icon: "download";
+                    selected: root.tab == 4;
+                    clicked => { root.tab = 4; }
+                }
+
+                ClassTitle { title: "帮助"; }
+                AdvancedListItem {
+                    title: "帮助";
+                    icon: "help";
+                    selected: root.tab == 5;
+                    clicked => { root.tab = 5; }
+                }
+                AdvancedListItem {
+                    title: "反馈";
+                    icon: "feedback";
+                    selected: root.tab == 6;
+                    clicked => { root.tab = 6; }
+                }
+                AdvancedListItem {
+                    title: "关于";
+                    icon: "info";
+                    selected: root.tab == 7;
+                    clicked => { root.tab = 7; }
+                }
+            }
+        }
+
+        // --- Right content (HMCL TransitionPane) ---
+        Rectangle {
+            background: transparent;
+
+            // tab 0: 全局设置 (HMCL GameSettingsPage)
+            if root.tab == 0: ScrollView {
+                width: parent.width;
+                height: parent.height;
+                VerticalLayout {
+                    padding: Theme.space-10;
+                    spacing: Theme.space-10;
+
+                    ComponentList {
+                        title: "游戏";
+                        LineSelectButton {
+                            title: "默认版本隔离策略";
+                            subtitle: "新建实例默认使用的版本隔离策略";
+                            options: ["隔离所有实例", "隔离模组实例", "不隔离实例"];
+                            selected-index <=> root.isolation-index;
+                        }
+                        LineSelectButton {
+                            title: "游戏窗口类型";
+                            options: ["窗口化", "全屏", "最大化"];
+                            selected-index <=> root.window-type-index;
+                        }
+                    }
+                    OptionsList {
+                        title: "启动";
+                        LineToggleButton {
+                            title: "查看日志";
+                            subtitle: "启动结束后显示运行日志窗口";
+                            checked <=> root.show-log;
+                        }
+                        LineTextPane {
+                            title: "启动器可见性";
+                            value: "保持启动器可见";
+                        }
+                    }
+                }
+            }
+
+            // tab 1: 环境管理 (HMCL JavaManagementPage)
+            if root.tab == 1: ScrollView {
+                width: parent.width;
+                height: parent.height;
+                VerticalLayout {
+                    padding: Theme.space-10;
+                    spacing: Theme.space-10;
+
+                    // Toolbar-like row (刷新 / 下载 Node.js / 添加)
+                    HorizontalLayout {
+                        spacing: Theme.space-4;
+                        LineButton {
+                            horizontal-stretch: 1;
+                            title: "刷新";
+                            trailing-icon: "";
+                        }
+                        LineButton {
+                            horizontal-stretch: 1;
+                            title: "下载 Node.js";
+                            trailing-icon: "";
+                        }
+                        LineButton {
+                            horizontal-stretch: 1;
+                            title: "添加";
+                            trailing-icon: "";
+                        }
+                    }
+
+                    ComponentList {
+                        title: "已安装的运行时";
+                        LineTextPane {
+                            title: "Node.js 24 LTS";
+                            subtitle: "C:/Users/yua81/AppData/Local/HDSL/runtimes/node/24.9.0/node.exe";
+                            value: "v24.9.0";
+                        }
+                        LineTextPane {
+                            title: "pnpm";
+                            subtitle: "随 Node.js 24 LTS 一同安装";
+                            value: "10.15.0";
+                        }
+                    }
+                }
+            }
+
+            // tab 2: 通用 (HMCL SettingsPage)
+            if root.tab == 2: ScrollView {
+                width: parent.width;
+                height: parent.height;
+                VerticalLayout {
+                    padding: Theme.space-10;
+                    spacing: Theme.space-10;
+
+                    ComponentList {
+                        title: "更新";
+                        LineSelectButton {
+                            title: "启动器更新";
+                            options: ["稳定版", "开发版"];
+                            selected-index <=> root.update-channel-index;
+                        }
+                        LineToggleButton {
+                            title: "提前预览版本";
+                            subtitle: "接收开发版更新推送";
+                            checked <=> root.preview-updates;
+                        }
+                    }
+                    ComponentList {
+                        title: "语言";
+                        LineSelectButton {
+                            title: "语言";
+                            subtitle: "重启后生效";
+                            options: ["跟随系统语言", "简体中文", "English"];
+                            selected-index <=> root.language-index;
+                        }
+                    }
+                    ComponentList {
+                        title: "杂项";
+                        LineToggleButton {
+                            title: "不启用愚人节功能";
+                            subtitle: "重启后生效";
+                            checked <=> root.disable-april-fools;
+                        }
+                        LineButton {
+                            title: "调试";
+                            trailing: "打开日志文件夹";
+                            trailing-icon: "";
+                        }
+                    }
+                }
+            }
+
+            // tab 3: 外观 (HMCL PersonalizationPage)
+            if root.tab == 3: ScrollView {
+                width: parent.width;
+                height: parent.height;
+                VerticalLayout {
+                    padding: Theme.space-10;
+                    spacing: Theme.space-10;
+
+                    ComponentList {
+                        title: "外观";
+                        LineSelectButton {
+                            title: "主题模式";
+                            options: ["跟随系统设置", "浅色模式", "深色模式"];
+                            selected-index <=> root.theme-mode-index;
+                        }
+                        LineSelectButton {
+                            title: "背景图片";
+                            options: ["默认", "内置", "自定义"];
+                            selected-index <=> root.background-index;
+                        }
+                        LineTextPane {
+                            title: "不透明度";
+                            value: "100%";
+                        }
+                        LineToggleButton {
+                            title: "标题栏透明";
+                            checked <=> root.titlebar-transparent;
+                        }
+                        LineToggleButton {
+                            title: "窗口透明";
+                            checked <=> root.window-transparent;
+                        }
+                    }
+                    ComponentList {
+                        title: "动画";
+                        LineToggleButton {
+                            title: "关闭动画";
+                            subtitle: "重启后生效";
+                            checked <=> root.disable-animation;
+                        }
+                    }
+                }
+            }
+
+            // tab 4: 下载 (HMCL DownloadSettingsPage)
+            if root.tab == 4: ScrollView {
+                width: parent.width;
+                height: parent.height;
+                VerticalLayout {
+                    padding: Theme.space-10;
+                    spacing: Theme.space-10;
+
+                    ComponentList {
+                        title: "下载源";
+                        LineSelectButton {
+                            title: "版本列表源";
+                            options: ["自动选择下载源", "尽量使用官方源", "尽量使用镜像源"];
+                            selected-index <=> root.version-list-source-index;
+                        }
+                        LineSelectButton {
+                            title: "下载源";
+                            options: ["自动选择下载源", "尽量使用官方源", "尽量使用镜像源"];
+                            selected-index <=> root.download-source-index;
+                        }
+                        LineSelectButton {
+                            title: "附加内容默认下载源";
+                            options: ["Modrinth", "CurseForge"];
+                            selected-index <=> root.addon-source-index;
+                        }
+                    }
+                    ComponentList {
+                        title: "下载";
+                        LineTextPane {
+                            title: "文件下载缓存文件夹";
+                            subtitle: "留空表示禁用下载缓存";
+                            value: "C:/Users/yua81/AppData/Local/HDSL/cache";
+                        }
+                        LineTextPane {
+                            title: "下载线程数";
+                            value: "自动";
+                        }
+                    }
+                }
+            }
+
+            // tab 5: 帮助 (HMCL HelpPage)
+            if root.tab == 5: ScrollView {
+                width: parent.width;
+                height: parent.height;
+                VerticalLayout {
+                    padding: Theme.space-10;
+                    spacing: Theme.space-10;
+
+                    ComponentList {
+                        title: "帮助";
+                        LineButton {
+                            title: "用户手册";
+                            subtitle: "离线阅读安装与使用说明";
+                            trailing-icon: "open-in-new";
+                        }
+                        LineButton {
+                            title: "项目主页";
+                            subtitle: "查看项目源码与发布";
+                            trailing-icon: "open-in-new";
+                        }
+                        LineButton {
+                            title: "问题反馈";
+                            subtitle: "报告缺陷或提出建议";
+                            trailing-icon: "open-in-new";
+                        }
+                    }
+                }
+            }
+
+            // tab 6: 反馈 (HMCL FeedbackPage)
+            if root.tab == 6: ScrollView {
+                width: parent.width;
+                height: parent.height;
+                VerticalLayout {
+                    padding: Theme.space-10;
+                    spacing: Theme.space-10;
+
+                    ComponentList {
+                        title: "反馈渠道";
+                        LineTextPane {
+                            title: "GitHub";
+                            subtitle: "在项目仓库提交 Issue";
+                            value: "提交 Issue";
+                        }
+                        LineTextPane {
+                            title: "社区";
+                            subtitle: "与其他用户交流使用经验";
+                            value: "官方讨论区";
+                        }
+                        LineButton {
+                            title: "复制诊断信息";
+                            trailing: "复制";
+                            trailing-icon: "content-copy";
+                        }
+                    }
+                }
+            }
+
+            // tab 7: 关于 (HMCL AboutPage)
+            if root.tab == 7: ScrollView {
+                width: parent.width;
+                height: parent.height;
+                VerticalLayout {
+                    padding: Theme.space-10;
+                    spacing: Theme.space-10;
+
+                    Rectangle {
+                        height: 96px;
+                        background: Theme.surface-container-lowest;
+                        border-radius: Theme.radius-4;
+                        drop-shadow-color: #0000001f;
+                        drop-shadow-blur: 5px;
+                        drop-shadow-offset-y: 1px;
+
+                        HorizontalLayout {
+                            padding: Theme.space-16;
+                            spacing: Theme.space-16;
+                            alignment: center;
+                            ImageContainer {
+                                container-size: 56px;
+                                corner-radius: Theme.radius-6;
+                                source: @image-url("../assets/branding/icon.png");
+                            }
+                            VerticalLayout {
+                                alignment: center;
+                                spacing: Theme.space-4;
+                                Text {
+                                    text: "HDSL · Hello DeepSeek Launcher";
+                                    color: Theme.on-surface;
+                                    font-size: Theme.font-size-16;
+                                    font-weight: 700;
+                                }
+                                Text {
+                                    text: "版本 0.1.0";
+                                    color: Theme.on-surface-variant;
+                                    font-size: Theme.font-size-12;
+                                }
+                            }
+                        }
+                    }
+
+                    ComponentList {
+                        title: "致谢";
+                        LineTextPane {
+                            title: "Slint";
+                            subtitle: "跨平台原生 UI 框架";
+                            value: "MIT / GPL";
+                        }
+                        LineTextPane {
+                            title: "DeepSeek Harness";
+                            subtitle: "本启动器管理的上游运行时";
+                            value: "npm";
+                        }
+                    }
+
+                    ComponentList {
+                        title: "法律";
+                        LineButton {
+                            title: "开源许可";
+                            subtitle: "GPL-3.0-only";
+                            trailing-icon: "open-in-new";
+                        }
+                    }
+                }
+            }
+        }
     }
 }
