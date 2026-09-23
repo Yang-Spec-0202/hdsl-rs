@@ -1,0 +1,10 @@
+HDSL is an independent, unofficial launcher for DeepSeek Harness.
+
+The navigation and page organization are inspired by Hello Minecraft! Launcher
+(HMCL), copyright its respective authors and contributors. The Java HDSL and
+HMCL-rs projects informed the product design. No code or graphical assets from
+those reference projects are included in this repository.
+
+DeepSeek Harness is developed by DeepSeek AI. Names are used to identify the
+software managed by this launcher; no endorsement is implied.
+

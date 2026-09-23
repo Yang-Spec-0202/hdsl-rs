@@ -1,0 +1,12 @@
+/target/
+/dist/
+/docs/**/book/
+/.data/
+/runtime/
+/instances/
+*.log
+*.env
+*.credentials.yaml
+*.key
+*.pem
+

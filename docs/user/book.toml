@@ -1,0 +1,9 @@
+[book]
+title = "HDSL 用户手册"
+language = "zh-CN"
+src = "src"
+
+[build]
+build-dir = "book"
+create-missing = false
+
