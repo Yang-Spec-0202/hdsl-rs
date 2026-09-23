@@ -15,6 +15,16 @@ HDSL 是用 Rust 与 [Slint](https://slint.dev/) 编写的 DeepSeek Harness 桌�
 
 待完成：设置持久化、主题与背景切换实际生效、插件与下载真实数据接线、实例图标选择对话框、日志逐行着色。详见[开发者手册](docs/developer/src/README.md)的 [UI 页面设计明细](docs/developer/src/ui-pages.md) 与 [实施计划](docs/developer/src/plan.md)。
 
+## 界面预览
+
+![首页](docs/images/hdsl-home.png)
+
+![实例列表](docs/images/hdsl-instances.png)
+
+![设置](docs/images/hdsl-settings.png)
+
+更多截图见 [docs/images](docs/images)：实例详情、游戏图标对话框、下载与安装、运行日志。截图中的图标为候选图标集，最终以原创资源替换。
+
 ## 功能
 
 - 从 npm 官方目录读取 `@deepseek-ai/dsh` 全部已发布版本（含 alpha、beta、rc 预览版），按精确版本安装并校验完整性。
