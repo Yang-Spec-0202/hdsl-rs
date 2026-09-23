@@ -4,7 +4,7 @@
 
 ## 目标与项目边界
 
-新建独立的 `hdsl-rs` Git 仓库，以 Rust 和 Slint 开发 Windows、Linux 启动器。首版完成运行时托管、Harness 版本与实例管理、官方 API 设置、兼容插件管理及 Web 启动。使用全新数据目录；暂不导入 Java 版 HDSL 的数据。
+新建独立的 `hdsl-rs` Git 仓库，以 Rust 和 Slint 开发 Windows、Linux 启动器。首版完成运行时托管、Harness 版本与实例管理、兼容插件管理及 Web 启动；模型路由与凭据由实例的 Harness 本体管理。使用全新数据目录；暂不导入 Java 版 HDSL 的数据。
 
 ## 界面与核心能力
 
