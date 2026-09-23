@@ -22,7 +22,6 @@ struct Controller {
     registry: Registry,
     selected: Mutex<Option<Uuid>>,
     processes: Mutex<HashMap<Uuid, Child>>,
-    web_urls: Mutex<HashMap<Uuid, String>>,
     pending_approval: Mutex<Option<mpsc::Sender<bool>>>,
     plugin_operation: Mutex<()>,
 }
@@ -36,7 +35,6 @@ fn main() -> Result<()> {
         registry: Registry::new()?,
         selected: Mutex::new(None),
         processes: Mutex::new(HashMap::new()),
-        web_urls: Mutex::new(HashMap::new()),
         pending_approval: Mutex::new(None),
         plugin_operation: Mutex::new(()),
     });
@@ -126,11 +124,6 @@ fn refresh_instances(state: &Arc<Controller>, weak: slint::Weak<AppWindow>) {
         *guard
     };
     let active = items.iter().find(|i| Some(i.id) == selected).cloned();
-    let configured = active
-        .as_ref()
-        .and_then(|i| i.home(&state.paths).ok())
-        .and_then(|h| credentials::is_configured(&h, "DEEPSEEK_API_KEY").ok())
-        .unwrap_or(false);
     let installed: Vec<slint::SharedString> = active
         .as_ref()
         .and_then(|i| plugin::installed_plugins(&state.paths, i).ok())
@@ -151,7 +144,6 @@ fn refresh_instances(state: &Arc<Controller>, weak: slint::Weak<AppWindow>) {
     post(weak, move |ui| {
         ui.set_instances(ModelRc::new(VecModel::from(rows)));
         ui.set_installed_plugins(ModelRc::new(VecModel::from(installed)));
-        ui.set_api_key_configured(configured);
         if let Some(i) = active {
             ui.set_selected_id(i.id.to_string().into());
             ui.set_active_instance_name(i.name.into());
@@ -393,59 +385,6 @@ fn wire_callbacks(ui: &AppWindow, state: &Arc<Controller>) {
     });
 
     let weak = ui.as_weak();
-    let controller = state.clone();
-    ui.on_save_api(move |key, endpoint, model| {
-        let state = controller.clone();
-        let update = weak.clone();
-        let (key, endpoint, model) = (key.to_string(), endpoint.to_string(), model.to_string());
-        job(weak.clone(), "保存 API 设置", move || {
-            let home = selected_instance(&state)?.home(&state.paths)?;
-            credentials::save_deepseek_api(
-                &home,
-                (!key.is_empty()).then_some(key.as_str()),
-                (!endpoint.is_empty()).then_some(endpoint.as_str()),
-                (!model.is_empty()).then_some(model.as_str()),
-            )?;
-            refresh_instances(&state, update);
-            Ok(())
-        });
-    });
-    let weak = ui.as_weak();
-    let controller = state.clone();
-    ui.on_remove_api_key(move || {
-        let state = controller.clone();
-        let update = weak.clone();
-        job(weak.clone(), "移除 API Key", move || {
-            let home = selected_instance(&state)?.home(&state.paths)?;
-            credentials::set_key(&home, "DEEPSEEK_API_KEY", None)?;
-            refresh_instances(&state, update);
-            Ok(())
-        });
-    });
-    let weak = ui.as_weak();
-    let controller = state.clone();
-    ui.on_open_web_settings(move || {
-        let id = *controller.selected.lock().expect("selected lock");
-        let url = id.and_then(|id| {
-            controller
-                .web_urls
-                .lock()
-                .expect("urls lock")
-                .get(&id)
-                .cloned()
-        });
-        if let Some(url) = url {
-            if let Err(e) = webbrowser::open(&url) {
-                status(weak.clone(), e.to_string());
-            }
-        } else {
-            status(
-                weak.clone(),
-                "请先启动实例，再在 Harness 网页中打开设置 → 模型",
-            );
-        }
-    });
-    let weak = ui.as_weak();
     ui.on_open_help(move || {
         if let Err(e) = open_help() {
             status(weak.clone(), format!("无法打开帮助：{e:#}"));
@@ -494,11 +433,6 @@ fn launch_selected(state: &Arc<Controller>, weak: slint::Weak<AppWindow>) -> Res
         .lock()
         .expect("processes lock")
         .insert(instance.id, child);
-    state
-        .web_urls
-        .lock()
-        .expect("urls lock")
-        .insert(instance.id, format!("http://127.0.0.1:{}", instance.port));
     let home = instance.home(&state.paths)?;
     pipe_logs(home.clone(), weak.clone(), stdout, "");
     pipe_logs(home, weak, stderr, "[stderr] ");
@@ -541,7 +475,6 @@ fn stop_one(state: &Controller, id: Uuid) -> Result<()> {
         child.kill()?;
         child.wait()?;
     }
-    state.web_urls.lock().expect("urls lock").remove(&id);
     Ok(())
 }
 fn stop_all(state: &Controller) {

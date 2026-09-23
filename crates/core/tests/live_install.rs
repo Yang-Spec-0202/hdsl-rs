@@ -1,4 +1,4 @@
-use hdsl_core::credentials::{redact_log_line, save_deepseek_api};
+use hdsl_core::credentials::redact_log_line;
 use hdsl_core::harness::{dsh_entry, install_dsh, managed_path, run_dsh};
 use hdsl_core::plugin::{
     curated_catalog, install_plugin, installed_core_versions, installed_plugins, latest_compatible,
@@ -238,11 +238,11 @@ fn installs_exact_harness_in_isolated_home() {
     )
     .unwrap();
     install_dsh(&paths, &other, &node, &pnpm, &registry, |_review| Ok(true)).unwrap();
-    save_deepseek_api(
-        &instance.home(&paths).unwrap(),
-        Some("sk-integration-secret-12345"),
-        Some("https://api.deepseek.com/anthropic"),
-        Some("deepseek-flash"),
+    let home = instance.home(&paths).unwrap();
+    std::fs::create_dir_all(&home).unwrap();
+    std::fs::write(
+        home.join(".credentials.yaml"),
+        "version: 1\nrefs:\n  DEEPSEEK_API_KEY: sk-integration-secret-12345\n",
     )
     .unwrap();
     assert_ne!(instance.dsh(&paths).unwrap(), other.dsh(&paths).unwrap());
