@@ -70,13 +70,49 @@ function New-IconPlaceholder {
 # Branding and wallpapers are original artwork committed in the repository;
 # only generate a placeholder if one is missing.
 
-# Instance icons
+# Instance icons: simple original colored tiles, one hue per name.
+function New-InstanceIcon {
+    param([string]$Rel, [int]$Size, [string]$Seed)
+    $target = Join-Path $OutDir $Rel
+    if (Test-Path -LiteralPath $target) {
+        Write-Verbose "keep existing $Rel"
+        return
+    }
+    $parent = Split-Path -Parent $target
+    if (-not (Test-Path -LiteralPath $parent)) {
+        New-Item -ItemType Directory -Path $parent -Force | Out-Null
+    }
+    $palette = @(
+        @(120, 170, 90),  @(170, 120, 80),  @(230, 210, 120), @(110, 130, 170),
+        @(200, 120, 150), @(90, 160, 170),  @(180, 150, 90),  @(120, 140, 200),
+        @(150, 110, 180), @(140, 140, 150), @(100, 170, 130), @(200, 160, 90),
+        @(160, 130, 110), @(130, 150, 190)
+    )
+    $hash = 0
+    foreach ($ch in $Seed.ToCharArray()) { $hash = ($hash * 31 + [int][char]$ch) % $palette.Count }
+    $rgb = $palette[$hash]
+    $fillColor = [System.Drawing.Color]::FromArgb(255, $rgb[0], $rgb[1], $rgb[2])
+    $bitmap = New-Object System.Drawing.Bitmap($Size, $Size)
+    $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+    $graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+    $graphics.Clear([System.Drawing.Color]::Transparent)
+    $inset = [Math]::Max(1, [Math]::Round($Size / 16))
+    $brush = New-Object System.Drawing.SolidBrush($fillColor)
+    $graphics.FillRectangle($brush, $inset, $inset, $Size - $inset * 2, $Size - $inset * 2)
+    $inner = [Math]::Round($Size / 3)
+    $offset = [Math]::Round(($Size - $inner) / 2)
+    $light = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(90, 255, 255, 255))
+    $graphics.FillRectangle($light, $offset, $offset, $inner, $inner)
+    $bitmap.Save($target, [System.Drawing.Imaging.ImageFormat]::Png)
+    $graphics.Dispose(); $bitmap.Dispose()
+}
+
 $instanceIcons = 'grass', 'chest', 'chicken', 'command', 'april_fools', 'optifine',
     'craft_table', 'fabric', 'legacyfabric', 'forge', 'cleanroom', 'neoforge',
     'furnace', 'quilt'
 foreach ($name in $instanceIcons) {
-    New-Bitmap "instances\$name.png"    32 32 png
-    New-Bitmap "instances\$name@2x.png" 64 64 png
+    New-InstanceIcon "instances\$name.png"    32 $name
+    New-InstanceIcon "instances\$name@2x.png" 64 $name
 }
 
 # Placeholders and social

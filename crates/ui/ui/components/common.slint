@@ -68,6 +68,37 @@ export component ImageContainer {
     }
 }
 
+// Instance icon chosen from the instance icon set (HMCL GameInstanceIconType).
+export component InstanceIcon {
+    in property <string> name: "grass";
+    in property <length> container-size: 32px;
+    in property <length> corner-radius: Theme.radius-6;
+
+    width: container-size;
+    height: container-size;
+
+    Rectangle {
+        width: parent.width;
+        height: parent.height;
+        border-radius: root.corner-radius;
+        clip: true;
+        if root.name == "chest": Image { width: parent.width; height: parent.height; source: @image-url("../assets/instances/chest.png"); image-fit: contain; }
+        if root.name == "chicken": Image { width: parent.width; height: parent.height; source: @image-url("../assets/instances/chicken.png"); image-fit: contain; }
+        if root.name == "command": Image { width: parent.width; height: parent.height; source: @image-url("../assets/instances/command.png"); image-fit: contain; }
+        if root.name == "april_fools": Image { width: parent.width; height: parent.height; source: @image-url("../assets/instances/april_fools.png"); image-fit: contain; }
+        if root.name == "optifine": Image { width: parent.width; height: parent.height; source: @image-url("../assets/instances/optifine.png"); image-fit: contain; }
+        if root.name == "craft_table": Image { width: parent.width; height: parent.height; source: @image-url("../assets/instances/craft_table.png"); image-fit: contain; }
+        if root.name == "fabric": Image { width: parent.width; height: parent.height; source: @image-url("../assets/instances/fabric.png"); image-fit: contain; }
+        if root.name == "legacyfabric": Image { width: parent.width; height: parent.height; source: @image-url("../assets/instances/legacyfabric.png"); image-fit: contain; }
+        if root.name == "forge": Image { width: parent.width; height: parent.height; source: @image-url("../assets/instances/forge.png"); image-fit: contain; }
+        if root.name == "cleanroom": Image { width: parent.width; height: parent.height; source: @image-url("../assets/instances/cleanroom.png"); image-fit: contain; }
+        if root.name == "neoforge": Image { width: parent.width; height: parent.height; source: @image-url("../assets/instances/neoforge.png"); image-fit: contain; }
+        if root.name == "furnace": Image { width: parent.width; height: parent.height; source: @image-url("../assets/instances/furnace.png"); image-fit: contain; }
+        if root.name == "quilt": Image { width: parent.width; height: parent.height; source: @image-url("../assets/instances/quilt.png"); image-fit: contain; }
+        if root.name == "grass" || root.name == "": Image { width: parent.width; height: parent.height; source: @image-url("../assets/instances/grass.png"); image-fit: contain; }
+    }
+}
+
 // HMCL TwoLineListItem: title (15px), subtitle (12px), optional tag.
 export component TwoLineListItem {
     in property <string> title;

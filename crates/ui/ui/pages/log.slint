@@ -1,86 +1,125 @@
 ﻿// Runtime log page. HMCL counterpart: ui/LogWindow.
 import { ScrollView } from "std-widgets.slint";
 import { Theme } from "../theme.slint";
-
-// HMCL .log-toggle: compact level filter button. Active = filled primary,
-// inactive = transparent with an outline.
-component LevelToggle inherits Rectangle {
-    in property <string> label;
-    in property <bool> active: false;
-    callback clicked();
-
-    height: 26px;
-    width: label-text.preferred-width + Theme.space-16;
-    border-radius: Theme.radius-4;
-    border-width: 1px;
-    border-color: root.active ? Theme.primary : Theme.outline;
-    background: root.active ? Theme.primary : transparent;
-
-    label-text := Text {
-        text: root.label;
-        color: root.active ? Theme.on-primary : Theme.on-surface-variant;
-        font-size: Theme.font-size-12;
-        horizontal-alignment: center;
-        vertical-alignment: center;
-        width: parent.width;
-        height: parent.height;
-    }
-    ta := TouchArea {
-        clicked => { root.clicked(); }
-    }
-    Rectangle {
-        width: parent.width;
-        height: parent.height;
-        border-radius: parent.border-radius;
-        background: ta.pressed
-            ? (root.active ? Theme.on-primary.with-alpha(0.16) : Theme.on-surface.with-alpha(0.12))
-            : (ta.has-hover && !root.active ? Theme.on-surface.with-alpha(0.04) : transparent);
-        animate background { duration: Theme.motion-short4; }
-    }
-}
+import { LogLine } from "../models.slint";
 
 export component LogPage inherits Rectangle {
-    in property <string> log-text;
+    in property <[LogLine]> lines;
 
-    property <int> min-level: 0;
+    // -1 shows every level; otherwise the minimum level (0 trace .. 5 fatal).
+    property <int> filter: -1;
+    property <[string]> levels: ["ALL", "TRACE", "DEBUG", "INFO", "WARN", "ERROR"];
     property <bool> always-on-top: false;
+
+    pure function level-bg(level: int) -> color {
+        if level <= 1 { return #eee9e0; }
+        if level == 2 { return #ffffff; }
+        if level == 3 { return #fef6d5; }
+        if level == 4 { return #fcebeb; }
+        return #f7a699;
+    }
+
+    pure function is-active(index: int) -> bool {
+        return index == 0 ? root.filter == -1 : root.filter == index - 1;
+    }
 
     background: transparent;
 
     VerticalLayout {
-        padding: Theme.space-12;
+        padding: Theme.space-10;
         spacing: Theme.space-8;
 
-        // --- Toolbar (HMCL LogWindowSkin top BorderPane) ---
         HorizontalLayout {
-            spacing: Theme.space-6;
-            alignment: start;
-            LevelToggle { label: "ALL"; active: root.min-level == 0; clicked => { root.min-level = 0; } }
-            LevelToggle { label: "TRACE"; active: root.min-level == 1; clicked => { root.min-level = 1; } }
-            LevelToggle { label: "DEBUG"; active: root.min-level == 2; clicked => { root.min-level = 2; } }
-            LevelToggle { label: "INFO"; active: root.min-level == 3; clicked => { root.min-level = 3; } }
-            LevelToggle { label: "WARN"; active: root.min-level == 4; clicked => { root.min-level = 4; } }
-            LevelToggle { label: "ERROR"; active: root.min-level == 5; clicked => { root.min-level = 5; } }
+            height: 30px;
+            spacing: Theme.space-4;
+
+            for level[index] in root.levels: Rectangle {
+                width: level-text.preferred-width + Theme.space-16;
+                height: 26px;
+                border-radius: Theme.radius-4;
+                border-width: 1px;
+                border-color: root.is-active(index) ? Theme.primary : Theme.outline;
+                background: root.is-active(index) ? Theme.primary : transparent;
+                Text {
+                    text: level;
+                    color: root.is-active(index) ? Theme.on-primary : Theme.on-surface-variant;
+                    font-size: Theme.font-size-12;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                    width: parent.width;
+                    height: parent.height;
+                }
+                level-text := Text { text: level; font-size: Theme.font-size-12; visible: false; }
+                lvl-ta := TouchArea {
+                    clicked => { root.filter = index == 0 ? -1 : index - 1; }
+                }
+            }
+
             Rectangle { horizontal-stretch: 1; background: transparent; }
-            LevelToggle { label: "始终置顶"; active: root.always-on-top; clicked => { root.always-on-top = !root.always-on-top; } }
+
+            Rectangle {
+                width: 96px;
+                height: 26px;
+                border-radius: Theme.radius-4;
+                border-width: 1px;
+                border-color: root.always-on-top ? Theme.primary : Theme.outline;
+                background: root.always-on-top ? Theme.primary : transparent;
+                Text {
+                    text: "始终置顶";
+                    color: root.always-on-top ? Theme.on-primary : Theme.on-surface-variant;
+                    font-size: Theme.font-size-12;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                    width: parent.width;
+                    height: parent.height;
+                }
+                pin-ta := TouchArea { clicked => { root.always-on-top = !root.always-on-top; } }
+            }
         }
 
-        // --- Log surface (HMCL .log-window list, monospace body) ---
         Rectangle {
             vertical-stretch: 1;
-            background: Theme.surface-container;
+            background: Theme.surface-container-lowest;
             border-radius: Theme.radius-4;
+            clip: true;
+
             ScrollView {
-                x: Theme.space-8;
-                y: Theme.space-8;
-                width: parent.width - Theme.space-16;
-                height: parent.height - Theme.space-16;
-                Text {
-                    text: root.log-text;
-                    font-family: "Consolas";
-                    font-size: Theme.font-size-12;
-                    color: Theme.on-surface;
-                    wrap: word-wrap;
+                VerticalLayout {
+                    spacing: 0;
+
+                    if root.lines.length == 0: Rectangle {
+                        height: 48px;
+                        background: transparent;
+                        Text {
+                            x: Theme.space-16;
+                            y: Theme.space-16;
+                            text: "暂无日志。启动实例后这里会显示输出。";
+                            color: Theme.on-surface-variant;
+                            font-size: Theme.font-size-13;
+                        }
+                    }
+
+                    for line in root.lines: Rectangle {
+                        visible: root.filter == -1 || line.level >= root.filter;
+                        height: Math.max(20px, line-text.preferred-height + 4px);
+                        background: root.level-bg(line.level);
+                        Text {
+                            x: Theme.space-8;
+                            y: 2px;
+                            width: parent.width - Theme.space-16;
+                            text: line.text;
+                            font-family: "Consolas";
+                            font-size: Theme.font-size-12;
+                            color: Theme.on-surface;
+                            overflow: elide;
+                        }
+                        line-text := Text {
+                            text: line.text;
+                            font-family: "Consolas";
+                            font-size: Theme.font-size-12;
+                            visible: false;
+                        }
+                    }
                 }
             }
         }

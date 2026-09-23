@@ -1,12 +1,13 @@
 use anyhow::{Context, Result, bail};
 use hdsl_core::credentials;
 use hdsl_core::harness;
+use hdsl_core::log::LogLevel;
 use hdsl_core::plugin::{self, BuildScriptReview, CatalogItem};
 use hdsl_core::registry::Registry;
 use hdsl_core::runtime;
 use hdsl_core::{AppPaths, Instance, InstanceStore};
-use hdsl_ui::{AppWindow, InstanceRow, PluginRow, VersionRow};
-use slint::{ComponentHandle, ModelRc, VecModel};
+use hdsl_ui::{AppWindow, InstanceRow, LogLine, PluginRow, VersionRow};
+use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
@@ -24,6 +25,7 @@ struct Controller {
     processes: Mutex<HashMap<Uuid, Child>>,
     pending_approval: Mutex<Option<mpsc::Sender<bool>>>,
     plugin_operation: Mutex<()>,
+    log_lines: Arc<Mutex<Vec<LogLine>>>,
 }
 
 fn main() -> Result<()> {
@@ -37,6 +39,7 @@ fn main() -> Result<()> {
         processes: Mutex::new(HashMap::new()),
         pending_approval: Mutex::new(None),
         plugin_operation: Mutex::new(()),
+        log_lines: Arc::new(Mutex::new(Vec::new())),
     });
     let ui = AppWindow::new()?;
     let cwd = std::env::current_dir()?.to_string_lossy().to_string();
@@ -133,27 +136,34 @@ fn refresh_instances(state: &Arc<Controller>, weak: slint::Weak<AppWindow>) {
         .collect();
     let rows: Vec<InstanceRow> = items
         .into_iter()
-        .map(|i| InstanceRow {
-            id: i.id.to_string().into(),
-            name: i.name.into(),
-            version: i.version.into(),
-            workspace: i.workspace.to_string_lossy().to_string().into(),
-            port: i.port.to_string().into(),
+        .map(|i| {
+            let icon = i.icon_name().to_string();
+            InstanceRow {
+                id: i.id.to_string().into(),
+                name: i.name.into(),
+                version: i.version.into(),
+                workspace: i.workspace.to_string_lossy().to_string().into(),
+                port: i.port.to_string().into(),
+                icon: icon.into(),
+            }
         })
         .collect();
     post(weak, move |ui| {
         ui.set_instances(ModelRc::new(VecModel::from(rows)));
         ui.set_installed_plugins(ModelRc::new(VecModel::from(installed)));
         if let Some(i) = active {
+            let icon = i.icon_name().to_string();
             ui.set_selected_id(i.id.to_string().into());
             ui.set_active_instance_name(i.name.into());
             ui.set_active_instance_version(i.version.into());
             ui.set_active_instance_port(i.port.to_string().into());
+            ui.set_active_instance_icon(icon.into());
         } else {
             ui.set_selected_id("".into());
             ui.set_active_instance_name("未选择实例".into());
             ui.set_active_instance_version("".into());
             ui.set_active_instance_port("".into());
+            ui.set_active_instance_icon("grass".into());
         }
     });
 }
@@ -173,6 +183,22 @@ fn wire_callbacks(ui: &AppWindow, state: &Arc<Controller>) {
     let controller = state.clone();
     ui.on_refresh_instances(move || {
         refresh_instances(&controller, weak.clone());
+    });
+
+    let weak = ui.as_weak();
+    let controller = state.clone();
+    ui.on_choose_instance_icon(move |id, icon| {
+        let state = controller.clone();
+        let update = weak.clone();
+        let (id, icon) = (id.to_string(), icon.to_string());
+        job(weak.clone(), "设置实例图标", move || {
+            let uuid = Uuid::parse_str(&id)?;
+            let mut instance = state.store.load(uuid)?;
+            instance.icon = Some(icon);
+            state.store.save(&instance)?;
+            refresh_instances(&state, update);
+            Ok(())
+        });
     });
 
     let weak = ui.as_weak();
@@ -440,35 +466,40 @@ fn launch_selected(state: &Arc<Controller>, weak: slint::Weak<AppWindow>) -> Res
         .expect("processes lock")
         .insert(instance.id, child);
     let home = instance.home(&state.paths)?;
-    pipe_logs(home.clone(), weak.clone(), stdout, "");
-    pipe_logs(home, weak, stderr, "[stderr] ");
+    pipe_logs(
+        home.clone(),
+        weak.clone(),
+        state.log_lines.clone(),
+        stdout,
+        "",
+    );
+    pipe_logs(home, weak, state.log_lines.clone(), stderr, "[stderr] ");
     Ok(())
 }
 
 fn pipe_logs<R: std::io::Read + Send + 'static>(
     home: PathBuf,
     weak: slint::Weak<AppWindow>,
+    lines: Arc<Mutex<Vec<LogLine>>>,
     source: R,
     prefix: &'static str,
 ) {
     std::thread::spawn(move || {
         for line in BufReader::new(source).lines().map_while(|r| r.ok()) {
             let safe = credentials::redact_log_line(&home, &line);
-            let message = format!("{prefix}{safe}\n");
-            post(weak.clone(), move |ui| {
-                let mut logs = ui.get_log_text().to_string();
-                logs.push_str(&message);
-                if logs.chars().count() > 100_000 {
-                    logs = logs
-                        .chars()
-                        .rev()
-                        .take(100_000)
-                        .collect::<String>()
-                        .chars()
-                        .rev()
-                        .collect();
+            let level = LogLevel::parse(&line).as_int();
+            let text: SharedString = format!("{prefix}{safe}").into();
+            let snapshot = {
+                let mut guard = lines.lock().expect("log lock");
+                guard.push(LogLine { text, level });
+                let len = guard.len();
+                if len > 2_000 {
+                    guard.drain(0..len - 2_000);
                 }
-                ui.set_log_text(logs.into());
+                guard.clone()
+            };
+            post(weak.clone(), move |ui| {
+                ui.set_log_lines(ModelRc::new(VecModel::from(snapshot)));
             });
         }
     });

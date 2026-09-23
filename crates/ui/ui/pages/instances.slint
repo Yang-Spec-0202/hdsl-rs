@@ -1,7 +1,7 @@
 ﻿// Instance list page. HMCL counterpart: ui/instances/GameListPage.
 import { LineEdit, ScrollView } from "std-widgets.slint";
 import { Theme } from "../theme.slint";
-import { ToolbarButton, ImageContainer, TwoLineListItem, IconButton } from "../components/common.slint";
+import { ToolbarButton, InstanceIcon, TwoLineListItem, IconButton } from "../components/common.slint";
 import { InstanceRow } from "../models.slint";
 
 export component InstancesPage inherits Rectangle {
@@ -112,9 +112,9 @@ export component InstancesPage inherits Rectangle {
                         spacing: Theme.space-8;
                         cross-axis-alignment: center;
 
-                        ImageContainer {
+                        InstanceIcon {
                             container-size: 32px;
-                            source: @image-url("../assets/instances/grass.png");
+                            name: row.icon;
                         }
 
                         TwoLineListItem {

@@ -3,7 +3,7 @@ import { Theme } from "theme.slint";
 import { Icon } from "icons.slint";
 import { AdvancedListItem, AdvancedListBox } from "components/navigation.slint";
 import { ClassTitle, ActionButton } from "components/common.slint";
-import { InstanceRow, PluginRow, VersionRow } from "models.slint";
+import { InstanceRow, PluginRow, VersionRow, LogLine } from "models.slint";
 import { HomePage } from "pages/home.slint";
 import { InstallPage } from "pages/install.slint";
 import { InstancesPage } from "pages/instances.slint";
@@ -12,7 +12,7 @@ import { SettingsPage } from "pages/settings.slint";
 import { LogPage } from "pages/log.slint";
 import { InstanceDetailPage } from "pages/instance-detail.slint";
 
-export { InstanceRow, PluginRow, VersionRow }
+export { InstanceRow, PluginRow, VersionRow, LogLine }
 
 // Title bar button, mirrors HMCL .jfx-decorator-button (40x40, icon 24).
 component ShellButton inherits Rectangle {
@@ -46,12 +46,13 @@ export component AppWindow inherits Window {
     in-out property <int> available-version-count: 0;
     in-out property <[string]> installed-plugins;
     in-out property <string> status-text: "准备就绪";
-    in-out property <string> log-text: "";
+    in-out property <[LogLine]> log-lines;
     in-out property <string> latest-version: "";
     in-out property <string> default-workspace: "";
     in-out property <string> active-instance-name: "未选择实例";
     in-out property <string> active-instance-version: "";
     in-out property <string> active-instance-port: "";
+    in-out property <string> active-instance-icon: "grass";
     in-out property <string> selected-id: "";
     in-out property <int> page: 0;
     in-out property <string> form-name: "我的 Harness";
@@ -83,6 +84,7 @@ export component AppWindow inherits Window {
     callback remove-plugin(string);
     callback open-help();
     callback approve-build(bool);
+    callback choose-instance-icon(string, string);
 
     // HMCL Decorator open/close animation: fade + scale from/to 0.8.
     Timer {
@@ -337,7 +339,7 @@ export component AppWindow inherits Window {
                         LogPage {
                             width: parent.width;
                             height: parent.height;
-                            log-text: root.log-text;
+                            lines: root.log-lines;
                         }
                     }
                     Rectangle {
@@ -353,6 +355,9 @@ export component AppWindow inherits Window {
                             instance-name: root.active-instance-name;
                             instance-version: root.active-instance-version;
                             instance-port: root.active-instance-port;
+                            instance-icon: root.active-instance-icon;
+                            installed-plugins: root.installed-plugins;
+                            choose-icon(name) => { root.choose-instance-icon(root.selected-id, name); }
                         }
                     }
                 }
