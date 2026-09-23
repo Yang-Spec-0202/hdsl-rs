@@ -24,3 +24,7 @@
 ## 已安装列表与卸载（已实现）
 
 从当前实例的 `profiles/web/package.json` 读取插件包名，在插件页列出。卸载前停止实例，并沿用安装事务：保留整个旧 profile，候选目录执行官方 `dsh plugin --profile web remove <包名>`，再做配置转储检查。失败时原样恢复。界面必须为卸载提供明确确认，且切换实例后列表立即更新。
+
+## 安装包内容核验（计划中）
+
+调用 `dsh plugin` 前只接受 npm registry 的 HTTPS tarball URL 和 `sha512-...` integrity，下载上限 25 MiB。下载字节的 SHA512 必须与 registry 声明一致；压缩包内的 `package/package.json` 要与所选包名、精确版本和 `dsh.bundle.patch` 一致，声明的 patch 必须是包内普通文件。路径不得越过包根目录。任一检查失败则不创建候选 profile，也不执行包脚本。
