@@ -12,6 +12,7 @@ export component InstancesPage inherits Rectangle {
     callback select-instance(string);
     callback launch-instance();
     callback clone-instance(string);
+    callback refresh-instances();
 
     property <string> query: "";
     property <bool> searching: false;
@@ -36,7 +37,7 @@ export component InstancesPage inherits Rectangle {
             ToolbarButton {
                 icon: "refresh";
                 label: "刷新";
-                clicked => { }
+                clicked => { root.refresh-instances(); }
             }
             ToolbarButton {
                 icon: "download";

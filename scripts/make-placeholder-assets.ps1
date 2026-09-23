@@ -29,6 +29,10 @@ $border = [System.Drawing.Color]::FromArgb(255, 118, 118, 131)
 function New-Bitmap {
     param([string]$Rel, [int]$Width, [int]$Height, [string]$Format)
     $target = Join-Path $OutDir $Rel
+    if (Test-Path -LiteralPath $target) {
+        Write-Verbose "keep existing $Rel"
+        return
+    }
     $parent = Split-Path -Parent $target
     if (-not (Test-Path -LiteralPath $parent)) {
         New-Item -ItemType Directory -Path $parent -Force | Out-Null
@@ -51,6 +55,10 @@ function New-Bitmap {
 function New-IconPlaceholder {
     param([string]$Rel)
     $target = Join-Path $OutDir $Rel
+    if (Test-Path -LiteralPath $target) {
+        Write-Verbose "keep existing $Rel"
+        return
+    }
     $parent = Split-Path -Parent $target
     if (-not (Test-Path -LiteralPath $parent)) {
         New-Item -ItemType Directory -Path $parent -Force | Out-Null
@@ -59,19 +67,8 @@ function New-IconPlaceholder {
     Set-Content -LiteralPath $target -Value $svg -Encoding UTF8 -NoNewline
 }
 
-# Branding
-New-Bitmap 'branding\icon.png'          32  32  png
-New-Bitmap 'branding\icon@2x.png'       64  64  png
-New-Bitmap 'branding\icon@4x.png'       128 128 png
-New-Bitmap 'branding\icon@8x.png'       256 256 png
-New-Bitmap 'branding\icon-mac.png'      512 512 png
-New-Bitmap 'branding\icon-title.png'    24  24  png
-New-Bitmap 'branding\icon-title@2x.png' 48  48  png
-
-# Wallpapers
-New-Bitmap 'wallpapers\2015-06-22.jpg' 800  480  jpg
-New-Bitmap 'wallpapers\2016-02-25.jpg' 800  480  jpg
-New-Bitmap 'wallpapers\2021-08-26.jpg' 1600 900  jpg
+# Branding and wallpapers are original artwork committed in the repository;
+# only generate a placeholder if one is missing.
 
 # Instance icons
 $instanceIcons = 'grass', 'chest', 'chicken', 'command', 'april_fools', 'optifine',

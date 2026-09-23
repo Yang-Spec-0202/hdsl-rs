@@ -67,6 +67,7 @@ export component AppWindow inherits Window {
 
     callback select-instance(string);
     callback refresh-versions();
+    callback refresh-instances();
     callback open-upstream-report();
     callback create-instance(string, string, string, string);
     callback launch-instance();
@@ -121,7 +122,7 @@ export component AppWindow inherits Window {
                     Image {
                         width: 24px;
                         height: 24px;
-                        source: @image-url("assets/branding/icon-title.png");
+                        source: @image-url("assets/branding/icon-title.svg");
                         image-fit: contain;
                     }
                     Text {
@@ -212,68 +213,129 @@ export component AppWindow inherits Window {
 
                 Rectangle {
                     background: Theme.surface-transparent-50;
+                    clip: true;
 
-                    if root.page == 0: HomePage {
+                    // Wallpaper, matching HMCL MainWindowPane's background node.
+                    Image {
                         width: parent.width;
                         height: parent.height;
-                        page <=> root.page;
-                        active-instance-name: root.active-instance-name;
-                        active-instance-version: root.active-instance-version;
-                        active-instance-port: root.active-instance-port;
-                        launch-instance => { root.launch-instance(); }
-                        stop-instance => { root.stop-instance(); }
-                        open-upstream-report => { root.open-upstream-report(); }
+                        source: @image-url("assets/wallpapers/roxy-bot-light-gradient.jpg");
+                        image-fit: cover;
                     }
-                    if root.page == 1: InstallPage {
+
+                    // Pages are kept mounted and cross-faded on switch.
+                    Rectangle {
                         width: parent.width;
                         height: parent.height;
-                        page <=> root.page;
-                        form-name <=> root.form-name;
-                        form-version <=> root.form-version;
-                        form-workspace <=> root.form-workspace;
-                        available-versions: root.available-versions;
-                        available-version-count: root.available-version-count;
-                        refresh-versions => { root.refresh-versions(); }
-                        create-instance(name, version, workspace, port) => { root.create-instance(name, version, workspace, port); }
+                        visible: root.page == 0;
+                        opacity: root.page == 0 ? 1 : 0;
+                        animate opacity { duration: Theme.motion-short4; easing: ease-in-out; }
+                        HomePage {
+                            width: parent.width;
+                            height: parent.height;
+                            page <=> root.page;
+                            active-instance-name: root.active-instance-name;
+                            active-instance-version: root.active-instance-version;
+                            active-instance-port: root.active-instance-port;
+                            update-available: root.latest-version != "";
+                            launch-instance => { root.launch-instance(); }
+                            stop-instance => { root.stop-instance(); }
+                            open-upstream-report => { root.open-upstream-report(); }
+                        }
                     }
-                    if root.page == 2: InstancesPage {
+                    Rectangle {
                         width: parent.width;
                         height: parent.height;
-                        page <=> root.page;
-                        instances: root.instances;
-                        selected-id <=> root.selected-id;
-                        pending-delete-id <=> root.pending-delete-id;
-                        select-instance(id) => { root.select-instance(id); }
-                        launch-instance => { root.launch-instance(); }
-                        clone-instance(id) => { root.clone-instance(id); }
+                        visible: root.page == 1;
+                        opacity: root.page == 1 ? 1 : 0;
+                        animate opacity { duration: Theme.motion-short4; easing: ease-in-out; }
+                        InstallPage {
+                            width: parent.width;
+                            height: parent.height;
+                            page <=> root.page;
+                            form-name <=> root.form-name;
+                            form-version <=> root.form-version;
+                            form-workspace <=> root.form-workspace;
+                            available-versions: root.available-versions;
+                            available-version-count: root.available-version-count;
+                            refresh-versions => { root.refresh-versions(); }
+                            create-instance(name, version, workspace, port) => { root.create-instance(name, version, workspace, port); }
+                        }
                     }
-                    if root.page == 3: PluginsPage {
+                    Rectangle {
                         width: parent.width;
                         height: parent.height;
-                        page <=> root.page;
-                        installed-plugins: root.installed-plugins;
-                        plugins: root.plugins;
-                        pending-remove-plugin <=> root.pending-remove-plugin;
-                        refresh-plugins(query) => { root.refresh-plugins(query); }
-                        install-plugin(package, version, repo) => { root.install-plugin(package, version, repo); }
+                        visible: root.page == 2;
+                        opacity: root.page == 2 ? 1 : 0;
+                        animate opacity { duration: Theme.motion-short4; easing: ease-in-out; }
+                        InstancesPage {
+                            width: parent.width;
+                            height: parent.height;
+                            page <=> root.page;
+                            instances: root.instances;
+                            selected-id <=> root.selected-id;
+                            pending-delete-id <=> root.pending-delete-id;
+                            select-instance(id) => { root.select-instance(id); }
+                            launch-instance => { root.launch-instance(); }
+                            clone-instance(id) => { root.clone-instance(id); }
+                            refresh-instances => { root.refresh-instances(); }
+                        }
                     }
-                    if root.page == 4: SettingsPage {
+                    Rectangle {
                         width: parent.width;
                         height: parent.height;
-                        page <=> root.page;
+                        visible: root.page == 3;
+                        opacity: root.page == 3 ? 1 : 0;
+                        animate opacity { duration: Theme.motion-short4; easing: ease-in-out; }
+                        PluginsPage {
+                            width: parent.width;
+                            height: parent.height;
+                            page <=> root.page;
+                            installed-plugins: root.installed-plugins;
+                            plugins: root.plugins;
+                            pending-remove-plugin <=> root.pending-remove-plugin;
+                            refresh-plugins(query) => { root.refresh-plugins(query); }
+                            install-plugin(package, version, repo) => { root.install-plugin(package, version, repo); }
+                        }
                     }
-                    if root.page == 5: LogPage {
+                    Rectangle {
                         width: parent.width;
                         height: parent.height;
-                        log-text: root.log-text;
+                        visible: root.page == 4;
+                        opacity: root.page == 4 ? 1 : 0;
+                        animate opacity { duration: Theme.motion-short4; easing: ease-in-out; }
+                        SettingsPage {
+                            width: parent.width;
+                            height: parent.height;
+                            page <=> root.page;
+                        }
                     }
-                    if root.page == 6: InstanceDetailPage {
+                    Rectangle {
                         width: parent.width;
                         height: parent.height;
-                        page <=> root.page;
-                        instance-name: root.active-instance-name;
-                        instance-version: root.active-instance-version;
-                        instance-port: root.active-instance-port;
+                        visible: root.page == 5;
+                        opacity: root.page == 5 ? 1 : 0;
+                        animate opacity { duration: Theme.motion-short4; easing: ease-in-out; }
+                        LogPage {
+                            width: parent.width;
+                            height: parent.height;
+                            log-text: root.log-text;
+                        }
+                    }
+                    Rectangle {
+                        width: parent.width;
+                        height: parent.height;
+                        visible: root.page == 6;
+                        opacity: root.page == 6 ? 1 : 0;
+                        animate opacity { duration: Theme.motion-short4; easing: ease-in-out; }
+                        InstanceDetailPage {
+                            width: parent.width;
+                            height: parent.height;
+                            page <=> root.page;
+                            instance-name: root.active-instance-name;
+                            instance-version: root.active-instance-version;
+                            instance-port: root.active-instance-port;
+                        }
                     }
                 }
             }

@@ -171,6 +171,12 @@ fn wire_callbacks(ui: &AppWindow, state: &Arc<Controller>) {
 
     let weak = ui.as_weak();
     let controller = state.clone();
+    ui.on_refresh_instances(move || {
+        refresh_instances(&controller, weak.clone());
+    });
+
+    let weak = ui.as_weak();
+    let controller = state.clone();
     ui.on_refresh_versions(move || {
         let state = controller.clone();
         let update = weak.clone();

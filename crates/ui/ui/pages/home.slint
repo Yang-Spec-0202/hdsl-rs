@@ -10,12 +10,13 @@ export component HomePage inherits Rectangle {
     in property <string> active-instance-name;
     in property <string> active-instance-version;
     in property <string> active-instance-port;
+    in property <bool> update-available: false;
     callback launch-instance();
     callback stop-instance();
     callback open-upstream-report();
 
-    // No public update property exists yet, so the bubble stays hidden.
-    property <bool> show-update: false;
+    property <bool> update-dismissed: false;
+    property <bool> show-update: root.update-available && !root.update-dismissed;
     property <bool> show-announcement: true;
     property <length> page-padding: 20px;
     // The app uses "未选择实例" as its no-selection sentinel.
@@ -197,7 +198,7 @@ export component HomePage inherits Rectangle {
                 icon-size: 15px;
                 tint: Theme.inverse-on-surface;
             }
-            bubble-close-ta := TouchArea { clicked => { root.show-update = false; } }
+            bubble-close-ta := TouchArea { clicked => { root.update-dismissed = true; } }
         }
     }
 
